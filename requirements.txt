@@ -1,0 +1,5 @@
+# Offline Korean speech recognition
+vosk>=0.3.38
+
+# Microphone recording (pre-built PortAudio binaries included, no system headers needed)
+sounddevice>=0.4.6

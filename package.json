@@ -1,0 +1,21 @@
+{
+  "name": "ai-lab-voice-assistant",
+  "version": "1.0.0",
+  "description": "Voice activation trigger — say '클로드' to wake up Claude and dictate text",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "download-model": "node scripts/download-model.js",
+    "setup": "bash setup.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "chalk": "^4.1.2",
+    "node-notifier": "^10.0.1",
+    "adm-zip": "^0.5.10",
+    "axios": "^1.7.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
