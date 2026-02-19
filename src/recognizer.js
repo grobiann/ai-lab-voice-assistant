@@ -13,6 +13,8 @@ const config = require('./config');
 const logger = require('./logger');
 
 const PYTHON_SCRIPT = path.join(__dirname, '../python/stt_server.py');
+// On Windows, the executable is 'python'; on Linux/macOS it is 'python3'
+const PYTHON_BIN = process.platform === 'win32' ? 'python' : 'python3';
 
 class Recognizer extends EventEmitter {
   constructor() {
@@ -31,7 +33,7 @@ class Recognizer extends EventEmitter {
         env.AUDIO_DEVICE = config.AUDIO_DEVICE;
       }
 
-      this._proc = spawn('python3', [PYTHON_SCRIPT, config.MODEL_PATH], {
+      this._proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT, config.MODEL_PATH], {
         env,
         stdio: ['pipe', 'pipe', 'inherit'],  // stdin=pipe, stdout=pipe, stderr=terminal
       });
@@ -71,6 +73,15 @@ class Recognizer extends EventEmitter {
             if (msg.text) this.emit('final', msg.text);
             break;
 
+          // Automation ack — emitted as 'ack:<cmd>:<id>' so automator can await it
+          case 'ack':
+            this.emit(`ack:${msg.cmd}:${msg.id}`, msg.success);
+            break;
+
+          case 'warn':
+            logger.warn(`[Python] ${msg.message}`);
+            break;
+
           case 'error':
             logger.error(`STT error: ${msg.message}`);
             reject(new Error(msg.message));
@@ -82,6 +93,16 @@ class Recognizer extends EventEmitter {
         logger.info('STT server stream closed');
       });
     });
+  }
+
+  /**
+   * Send a JSON command to the Python subprocess via its stdin.
+   * @param {object} cmd  Plain object — will be serialised to one JSON line.
+   */
+  sendCommand(cmd) {
+    if (this._proc && this._proc.stdin.writable) {
+      this._proc.stdin.write(JSON.stringify(cmd) + '\n');
+    }
   }
 
   /**

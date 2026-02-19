@@ -31,39 +31,44 @@
 ## 아키텍처
 
 ```
-Node.js (src/)          Python (python/)
-──────────────          ────────────────
-index.js                stt_server.py
-  ├─ wakeDetector.js      ├─ sounddevice  ← 마이크 녹음
-  ├─ automator.js         └─ vosk         ← 한국어 STT
-  └─ recognizer.js ───────── JSON lines ──→ (stdin/stdout)
+Node.js (src/)                    Python (python/stt_server.py)
+──────────────                    ──────────────────────────────
+index.js                          ├─ sounddevice   ← 마이크 녹음
+  ├─ wakeDetector.js              ├─ vosk          ← 한국어 STT
+  ├─ automator.js  ─── cmd ──→   ├─ focus_claude  ← 창 포커스
+  └─ recognizer.js ←── ack ──    └─ type_text     ← 텍스트 입력
+          │                (stdin/stdout JSON lines)
+          └─ partial / final events
 ```
 
-Node.js가 Python 서브프로세스를 시작하고, Python이 마이크 녹음 + Vosk STT를 담당합니다.
-Node.js는 JSON 결과를 받아 웨이크 워드를 감지하고 xdotool로 Claude에 입력합니다.
+Node.js가 Python 서브프로세스를 시작합니다.
+- Python → Node.js: 음성 인식 결과 (`partial`, `final`)
+- Node.js → Python: 자동화 명령 (`focus_claude`, `type_text`)
+- Python이 창 제어 + 텍스트 입력까지 처리하므로 **Windows / Linux 모두 동작**합니다.
 
 ---
 
 ## 설치
 
-### 빠른 설치 (권장)
+### Windows (PowerShell)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+### Linux / macOS
 
 ```bash
 bash setup.sh
 ```
 
-### 수동 설치
+### 수동 설치 — Linux
 
 #### 1. 시스템 패키지
 
 ```bash
 sudo apt install xdotool xclip
 ```
-
-| 패키지 | 역할 |
-|--------|------|
-| `xdotool` | X11 창 찾기 / 포커스 / 키 입력 |
-| `xclip` | 클립보드로 한국어 텍스트 붙여넣기 |
 
 #### 2. Python 패키지
 
@@ -73,13 +78,26 @@ pip3 install srt
 pip3 install -r requirements.txt
 ```
 
-#### 3. Node.js 패키지
+### 수동 설치 — Windows
+
+#### 1. Python 패키지
+
+```powershell
+pip install "setuptools<67"
+pip install srt
+pip install -r requirements.txt
+pip install pygetwindow pyperclip pyautogui
+```
+
+### 공통 (Windows/Linux 모두)
+
+#### Node.js 패키지
 
 ```bash
 npm install
 ```
 
-#### 4. Vosk 한국어 모델 다운로드 (~82 MB)
+#### Vosk 한국어 모델 다운로드 (~82 MB)
 
 ```bash
 npm run download-model
@@ -87,11 +105,14 @@ npm run download-model
 
 모델이 `models/vosk-model-small-ko-0.22/` 에 저장됩니다.
 
-#### 5. 환경 변수 설정
+#### 환경 변수 설정
 
 ```bash
+# Linux
 cp .env.example .env
-# 필요시 .env 수정
+
+# Windows PowerShell
+Copy-Item .env.example .env
 ```
 
 ---
@@ -144,12 +165,12 @@ npm start
 |-----------|------------|------|
 | **Python** | [vosk](https://alphacephei.com/vosk/) | 오프라인 한국어 STT (Kaldi 기반) |
 | **Python** | [sounddevice](https://python-sounddevice.readthedocs.io/) | 마이크 녹음 (PortAudio 내장) |
-| **Node.js** | xdotool (시스템) | X11 창 관리 + 키 입력 |
-| **Node.js** | xclip (시스템) | 클립보드 붙여넣기 (한글 입력) |
+| **Python (Windows)** | pygetwindow | 창 검색 / 포커스 |
+| **Python (Windows)** | pyperclip + pyautogui | 클립보드 붙여넣기로 한글 입력 |
+| **Python (Linux)** | xdotool + xclip (시스템) | 창 관리 + 클립보드 입력 |
 | **Node.js** | [node-notifier](https://github.com/mikaelbr/node-notifier) | 데스크톱 알림 |
 | **Node.js** | [adm-zip](https://github.com/cthackers/adm-zip) + [axios](https://axios-http.com/) | 모델 다운로드 |
-| **Node.js** | [dotenv](https://github.com/motdotla/dotenv) | 환경 변수 |
-| **Node.js** | [chalk](https://github.com/chalk/chalk) | 컬러 콘솔 출력 |
+| **Node.js** | [dotenv](https://github.com/motdotla/dotenv) + [chalk](https://github.com/chalk/chalk) | 환경 변수, 콘솔 출력 |
 
 ---
 
@@ -159,17 +180,26 @@ npm start
 → `npm run download-model` 실행
 
 **"Failed to open microphone"**
-→ 마이크 장치 확인: `python3 -c "import sounddevice; print(sounddevice.query_devices())"`
+→ 마이크 장치 확인:
+  - Linux: `python3 -c "import sounddevice; print(sounddevice.query_devices())"`
+  - Windows: `python -c "import sounddevice; print(sounddevice.query_devices())"`
 → `.env`에서 `AUDIO_DEVICE=<숫자>` 로 장치 지정
 
 **Claude 창을 못 찾음**
 → Claude를 미리 열어둔 상태에서 실행
-→ `xdotool search --name "Claude"` 로 창 제목 확인
+→ 창 제목 확인:
+  - Linux: `xdotool search --name "Claude"`
+  - Windows PowerShell: `python -c "import pygetwindow as gw; print([w.title for w in gw.getAllWindows() if w.title])"`
 → `.env`의 `CLAUDE_WINDOW_NAMES`에 정확한 창 제목 추가
 
-**한국어가 입력되지 않음**
-→ `xclip` 설치 확인: `which xclip`
-→ `sudo apt install xclip`
+**한국어가 입력되지 않음 (Linux)**
+→ `which xclip` 확인 → 없으면: `sudo apt install xclip`
+
+**한국어가 입력되지 않음 (Windows)**
+→ `pip install pyperclip pyautogui` 실행
 
 **vosk/srt 설치 오류**
-→ `pip3 install "setuptools<67" && pip3 install srt` 먼저 실행
+→ `pip install "setuptools<67" && pip install srt` 먼저 실행
+
+**PowerShell 실행 정책 오류**
+→ `powershell -ExecutionPolicy Bypass -File setup.ps1`
