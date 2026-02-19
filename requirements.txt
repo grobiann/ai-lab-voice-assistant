@@ -3,3 +3,6 @@ vosk>=0.3.38
 
 # Microphone recording (pre-built PortAudio binaries included, no system headers needed)
 sounddevice>=0.4.6
+
+# Audio resampling (needed when mic native rate != 16kHz, e.g. 44100Hz)
+numpy>=1.21.0
