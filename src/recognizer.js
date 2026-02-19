@@ -78,6 +78,15 @@ class Recognizer extends EventEmitter {
             this.emit(`ack:${msg.cmd}:${msg.id}`, msg.success);
             break;
 
+          case 'info':
+            logger.info(`[mic] ${msg.message}`);
+            break;
+
+          // Mic level (0–100) — forwarded so index.js can render a meter
+          case 'level':
+            this.emit('level', msg.value);
+            break;
+
           case 'warn':
             logger.warn(`[Python] ${msg.message}`);
             break;

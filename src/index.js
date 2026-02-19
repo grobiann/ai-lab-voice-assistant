@@ -100,9 +100,19 @@ async function main() {
     process.exit(1);
   }
 
+  // Show a live microphone level meter so the user can confirm audio is captured
+  recognizer.on('level', (value) => {
+    if (activated) return;  // hide meter while dictating to reduce noise
+    const bars  = Math.round(value / 5);           // 0–20 bars
+    const filled = '█'.repeat(bars);
+    const empty  = '░'.repeat(20 - bars);
+    const label  = value > 10 ? ' (sound detected)' : '';
+    logger.partial(`MIC [${filled}${empty}] ${String(value).padStart(3)}%${label}`);
+  });
+
   // Handle partial results — show in console only, don't type yet
   recognizer.on('partial', (text) => {
-    logger.partial(text);
+    logger.partial(`... ${text}`);
   });
 
   // Handle confirmed (final) results
