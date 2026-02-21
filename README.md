@@ -92,23 +92,64 @@ TIER2_MODEL = "large-v3"   # 기본값
 
 ---
 
-### 3단계 `"tier3"` — 최고 정밀도 (맞춤법·문장 부호 자동 교정)
+### 3단계 `"tier3"` — 최고 정밀도 (맞춤법·외래어·문장 부호 자동 교정)
+
+faster-whisper 인식 후 **LLM이 교정**합니다. `LLM_BACKEND`로 백엔드를 선택합니다.
 
 ```python
-STT_MODE          = "tier3"
-TIER3_MODEL       = "large-v3"   # 기본값
-ANTHROPIC_API_KEY = "sk-ant-..."   # 환경변수 ANTHROPIC_API_KEY 권장
+STT_MODE    = "tier3"
+LLM_BACKEND = "ollama"   # "ollama" | "groq" | "claude"
 ```
 
-- **faster-whisper large-v3** 인식 후 **Claude Haiku**가 후처리
-- 맞춤법, 띄어쓰기, 문장 부호, 구어체→문어체 변환
-- 추론 시간 ~3-6초 (Whisper + API 왕복)
-- 권장 환경: 문서 작성, 이메일, 전문 용어·빠른 발화가 많은 경우
+#### LLM 백엔드 선택
+
+| 백엔드 | 비용 | 속도 | 한국어 | 필요 준비 |
+|--------|------|------|--------|----------|
+| `"ollama"` (기본) | **무료** | 빠름 (로컬 GPU) | ★★★★★ | Ollama + 모델 설치 |
+| `"groq"` | **무료** (API 키) | 매우 빠름 (클라우드) | ★★★★☆ | Groq API 키 |
+| `"claude"` | 유료 | 빠름 (클라우드) | ★★★★★ | Anthropic API 키 |
+
+---
+
+#### Ollama 설정 (무료, 권장)
+
+```bash
+# 1. Ollama 설치: https://ollama.com/download
+# 2. 모델 다운로드 (한국어 특화 모델 선택)
+ollama pull exaone3.5:7.8b   # LG AI Research, 권장 (VRAM ~6GB)
+ollama pull exaone3.5:2.4b   # 경량 버전 (VRAM ~3GB)
+```
+
+```python
+# config.py
+LLM_BACKEND  = "ollama"
+OLLAMA_MODEL = "exaone3.5:7.8b"   # 또는 exaone3.5:2.4b
+```
+
+#### Groq 설정 (무료 API)
+
+```bash
+# API 키 발급: https://console.groq.com (무료, 신용카드 불필요)
+# .env 파일에 추가:
+GROQ_API_KEY=gsk_...
+```
+
+```python
+# config.py
+LLM_BACKEND = "groq"
+```
+
+---
+
+**교정 예시 (한영 혼합 포함):**
 
 ```
-Whisper 원문: "오늘미팅에서 중요한내용을 논의했어 다음주까지 보고서 작성해야돼"
-Claude 교정: "오늘 미팅에서 중요한 내용을 논의했어. 다음 주까지 보고서 작성해야 돼."
+Whisper 원문: "오늘 유투브에서 챗지피티 api 사용법 봤는데 완전 쉽더라"
+LLM 교정:    "오늘 YouTube에서 ChatGPT API 사용법 봤는데 완전 쉽더라."
 ```
+
+- 추론 시간: ~3-8초 (Whisper + LLM)
+- 권장 환경: 문서 작성, 이메일, 한영 혼합 발화, 전문 용어가 많은 경우
 
 ---
 
@@ -175,6 +216,8 @@ OPENAI_API_KEY=sk-...          # cloud 용
 
 ## 설정 (`config.py`)
 
+**STT 단계**
+
 | 항목 | 기본값 | 설명 |
 |------|--------|------|
 | `STT_MODE` | `"tier2"` | `"tier1"` / `"tier2"` / `"tier3"` / `"cloud"` |
@@ -185,9 +228,30 @@ OPENAI_API_KEY=sk-...          # cloud 용
 | `WHISPER_DEVICE` | `"cuda"` | `"cuda"` / `"cpu"` |
 | `WHISPER_COMPUTE` | `"float16"` | GPU: `"float16"` / CPU: `"int8"` |
 | `WHISPER_BEAM` | `5` | Beam search 크기 (클수록 정확, 느림) |
-| `OPENAI_API_KEY` | `""` | OpenAI API 키 (cloud 모드) |
-| `ANTHROPIC_API_KEY` | `""` | Anthropic API 키 (tier3 모드) |
-| `LLM_MODEL` | `"claude-haiku-4-5-20251001"` | tier3 교정 모델 |
+| `WHISPER_INITIAL_PROMPT` | (한영 힌트 문장) | 한영 혼합 인식 개선용 힌트. `""` 비활성화 |
+
+**LLM 교정 (tier3)**
+
+| 항목 | 기본값 | 설명 |
+|------|--------|------|
+| `LLM_BACKEND` | `"ollama"` | `"ollama"` / `"groq"` / `"claude"` |
+| `OLLAMA_HOST` | `"http://localhost:11434"` | Ollama 서버 주소 |
+| `OLLAMA_MODEL` | `"exaone3.5:7.8b"` | Ollama 모델 (ollama list로 확인) |
+| `GROQ_LLM_MODEL` | `"llama-3.1-8b-instant"` | Groq 모델명 |
+| `CLAUDE_LLM_MODEL` | `"claude-haiku-4-5-20251001"` | Claude 모델명 |
+
+**API 키**
+
+| 항목 | 기본값 | 설명 |
+|------|--------|------|
+| `GROQ_API_KEY` | `""` | Groq API 키 (.env 권장) |
+| `ANTHROPIC_API_KEY` | `""` | Claude API 키 (.env 권장) |
+| `OPENAI_API_KEY` | `""` | OpenAI API 키 (cloud STT 모드) |
+
+**출력**
+
+| 항목 | 기본값 | 설명 |
+|------|--------|------|
 | `TYPER_TRAILING_SPACE` | `True` | 텍스트 끝 공백 추가 |
 
 ---

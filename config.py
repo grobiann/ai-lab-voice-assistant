@@ -23,12 +23,11 @@ except ImportError:
 #             사용 시나리오: 일반적인 사용, API 키 없이 최고 수준의 로컬 정확도
 #             VRAM: ~3GB (float16 양자화), 추론 시간: ~1-3초 (GPU)
 #
-#   "tier3" : 3단계 — 최고 정밀도 (맞춤법·띄어쓰기·문장 부호 자동 교정)
-#             faster-whisper (large-v3) + Claude Haiku API 교정
-#             속도: ★★★☆☆  정확도: ★★★★★+교정  비용: Claude API 과금
-#             사용 시나리오: 문서 작성, 이메일, 전문 용어가 많은 경우
-#             VRAM: ~3GB, 추론 시간: ~3-6초 (Whisper + API 왕복)
-#             ANTHROPIC_API_KEY 필요
+#   "tier3" : 3단계 — 최고 정밀도 (맞춤법·외래어·문장 부호 자동 교정)
+#             faster-whisper (large-v3) + LLM 교정 (LLM_BACKEND 선택)
+#             속도: ★★★☆☆  정확도: ★★★★★+교정  비용: LLM_BACKEND에 따라 무료~유료
+#             사용 시나리오: 문서 작성, 이메일, 한영 혼합 발화, 전문 용어가 많은 경우
+#             VRAM: ~3GB, 추론 시간: ~3-8초 (Whisper + LLM)
 #
 #   "cloud" : 클라우드 대체 — 로컬 GPU 없는 환경용 (고급 옵션)
 #             OpenAI Whisper API (whisper-1 / large-v2 기반)
@@ -48,13 +47,48 @@ WHISPER_DEVICE  = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fa
 WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
 WHISPER_BEAM    = 5            # Beam search 크기 (클수록 정확하지만 느림, 기본 5)
 
-# ── API 키 (환경변수 우선, 없으면 아래에 직접 입력) ───────────────────────────────
-# .env 파일 또는 환경변수로 설정 권장
-OPENAI_API_KEY    = os.environ.get("OPENAI_API_KEY",    "")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# ── Whisper 한영 혼합 초기 프롬프트 ─────────────────────────────────────────────
+# 한국어 + 영어 외래어·기술 용어가 섞인 발화에서 인식률을 높이는 힌트 문장
+# Whisper가 이 맥락을 참고해 영어 단어를 올바르게 인식함
+# 빈 문자열("")로 설정하면 프롬프트 없이 동작
+WHISPER_INITIAL_PROMPT = (
+    "한국어 음성이며 영어 단어와 외래어가 포함됩니다. "
+    "예: API, GPU, CPU, ChatGPT, YouTube, iPhone, 스마트폰, 노트북, 프로그램, 소프트웨어."
+)
 
-# ── LLM 교정 설정 (STT_MODE = "tier3") ────────────────────────────────────────
-LLM_MODEL = "claude-haiku-4-5-20251001"   # 빠르고 저렴한 모델 권장
+# ── LLM 교정 백엔드 (STT_MODE = "tier3") ────────────────────────────────────────
+#
+#   "ollama" : Ollama 로컬 LLM — 완전 무료, 인터넷 불필요 ← 기본값
+#              OLLAMA_MODEL 모델을 로컬에서 실행 (Ollama 설치 + 모델 pull 필요)
+#
+#   "groq"   : Groq API 무료 티어 — API 키 필요하지만 무료
+#              30 req/min, 14,400 req/day — 음성 교정 용도로 충분
+#              GROQ_API_KEY 필요 (발급: https://console.groq.com)
+#
+#   "claude" : Anthropic Claude API — 유료, 최고 한국어 품질
+#              ANTHROPIC_API_KEY 필요
+#
+LLM_BACKEND = "ollama"
+
+# ── Ollama 설정 ──────────────────────────────────────────────────────────────────
+# 모델 선택 가이드:
+#   exaone3.5:7.8b  — LG AI Research, 한국어 특화, 권장 (VRAM ~6GB)
+#   exaone3.5:2.4b  — 경량, 빠름 (VRAM ~3GB)
+#   qwen2.5:7b      — 알리바바, 한국어 양호, 빠름 (VRAM ~5GB)
+#   qwen2.5:3b      — 초경량 (VRAM ~2.5GB)
+OLLAMA_HOST  = "http://localhost:11434"
+OLLAMA_MODEL = "exaone3.5:7.8b"
+
+# ── Groq 설정 (LLM_BACKEND = "groq") ────────────────────────────────────────────
+GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
+GROQ_LLM_MODEL = "llama-3.1-8b-instant"   # 빠름, 한국어 지원
+
+# ── Claude 설정 (LLM_BACKEND = "claude") ────────────────────────────────────────
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+CLAUDE_LLM_MODEL  = "claude-haiku-4-5-20251001"
+
+# ── 기타 API 키 ─────────────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")   # cloud 모드용
 
 # ── 오디오 ─────────────────────────────────────────────────────────────────────
 SAMPLE_RATE  = 16000   # Whisper 권장 샘플레이트

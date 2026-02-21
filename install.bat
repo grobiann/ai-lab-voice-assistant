@@ -65,6 +65,27 @@ if not exist ".env" (
     echo   [OK] .env 파일 유지 (기존 설정 보존)
 )
 
+:: ── Ollama 확인 ────────────────────────────────────────────────────────────────
+echo.
+echo [Ollama] tier3 LLM 교정 (LLM_BACKEND=ollama) 사용 시 필요...
+where ollama > nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo   [OK] Ollama 설치됨
+    ollama list 2>nul | findstr "exaone3.5" > nul
+    if !ERRORLEVEL! EQU 0 (
+        echo   [OK] EXAONE 3.5 모델 준비됨
+    ) else (
+        echo   [!] EXAONE 3.5 모델 미설치. 필요 시:
+        echo       ollama pull exaone3.5:7.8b   ^(권장, 한국어 특화, ~5GB^)
+        echo       ollama pull exaone3.5:2.4b   ^(경량, ~2GB^)
+    )
+) else (
+    echo   [!] Ollama 미설치. tier3^(ollama^) 사용 시 필요:
+    echo       설치: https://ollama.com/download
+    echo       설치 후: ollama pull exaone3.5:7.8b
+    echo       tier3 없이 tier2 기본 사용 가능 ^(API 키 불필요^)
+)
+
 :: ── 완료 ───────────────────────────────────────────────────────────────────────
 echo.
 echo ==================================================

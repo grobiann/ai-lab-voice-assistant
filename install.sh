@@ -68,7 +68,26 @@ fi
 # ── 5. run.sh 실행 권한 ─────────────────────────────────────────────────────────
 chmod +x "$SCRIPT_DIR/run.sh"
 
-# ── 6. Linux 데스크탑 바로가기 ──────────────────────────────────────────────────
+# ── 6. Ollama 설치 확인 (tier3 ollama 모드용) ───────────────────────────────────
+step "Ollama 확인 (tier3 LLM 교정용)"
+if command -v ollama &>/dev/null; then
+    ok "Ollama 설치됨: $(ollama --version 2>/dev/null || echo '버전 확인 불가')"
+    # 권장 모델 존재 여부 확인
+    if ollama list 2>/dev/null | grep -q "exaone3.5"; then
+        ok "EXAONE 3.5 모델 준비됨"
+    else
+        warn "EXAONE 3.5 모델 미설치 — tier3(ollama) 사용 시 필요:"
+        echo "     ollama pull exaone3.5:7.8b   (권장, 한국어 특화, ~5GB)"
+        echo "     ollama pull exaone3.5:2.4b   (경량, ~2GB)"
+    fi
+else
+    warn "Ollama 미설치 — tier3 (LLM_BACKEND=\"ollama\") 사용 시 필요"
+    echo "     설치: https://ollama.com/download"
+    echo "     설치 후 모델 다운로드:"
+    echo "       ollama pull exaone3.5:7.8b   (권장, 한국어 특화, ~5GB)"
+    echo "       ollama pull exaone3.5:2.4b   (경량, ~2GB)"
+    echo "     tier3 없이 tier2 기본 사용 가능 (API 키 불필요)"
+fi
 APPS_DIR="$HOME/.local/share/applications"
 if [ -d "$APPS_DIR" ]; then
     step "데스크탑 바로가기 설치"
@@ -97,6 +116,9 @@ echo -e "    터미널    :  ./run.sh"
 echo -e "    앱 메뉴   :  'Voice Typer' 검색 (Linux)"
 echo ""
 echo -e "  STT 단계 변경 → config.py 의 STT_MODE:"
-echo -e "    tier1 (빠름)  tier2 (균형, 기본)  tier3 (최고정밀)"
+echo -e "    tier1 (빠름)  tier2 (균형, 기본)  tier3 (최고정밀+LLM 교정)"
+echo ""
+echo -e "  tier3 LLM 백엔드 → config.py 의 LLM_BACKEND:"
+echo -e "    ollama (무료, 로컬)  groq (무료 API)  claude (유료)"
 echo -e "=================================================="
 echo -e "${NC}"

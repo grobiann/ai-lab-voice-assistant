@@ -107,7 +107,7 @@ def main():
     _TIER_LABELS = {
         "tier1": "1단계 — 빠른 응답 (faster-whisper small)",
         "tier2": "2단계 — 균형 (faster-whisper large-v3)",
-        "tier3": "3단계 — 최고 정밀도 (large-v3 + Claude 교정)",
+        "tier3": f"3단계 — 최고 정밀도 (large-v3 + {config.LLM_BACKEND} 교정)",
         "cloud": "클라우드 (OpenAI Whisper API)",
     }
     _TIER_MODELS = {
