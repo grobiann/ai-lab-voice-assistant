@@ -91,7 +91,8 @@ echo.
 echo ==================================================
 echo   설치 완료!
 echo.
-echo   실행: run.bat 더블클릭
+echo   실행 (콘솔 없음): run.vbs 더블클릭  ^(권장^)
+echo   실행 (콘솔 표시): run.bat 더블클릭  ^(오류 확인용^)
 echo.
 echo   STT 단계 변경: config.py 의 STT_MODE 수정
 echo     tier1 (빠름) / tier2 (균형, 기본) / tier3 (최고정밀)

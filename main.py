@@ -11,21 +11,33 @@ from ui.overlay         import Overlay
 import config
 
 # ── 전역 컴포넌트 ───────────────────────────────────────────────────────────────
-sm       = StateMachine()
-recorder = None
-overlay  = None
+sm            = StateMachine()
+recorder      = None
+overlay       = None
+_model_loaded = False   # 모델 로드 완료 전 토글 입력 차단용 플래그
 
 
 # ── 토글 핸들러 (버튼 클릭 / 단축키 공통) ───────────────────────────────────────
 
 def on_toggle():
     """IDLE↔RECORDING 전환 또는 RECORDING→PROCESSING 전환."""
+    if not _model_loaded:
+        return   # 모델 로딩 중 — 무시
     state = sm.state
     if state == State.IDLE:
         sm.to_recording()
     elif state == State.RECORDING:
         sm.to_processing()
     # PROCESSING 중에는 무시
+
+
+# ── 모델 로드 완료 콜백 ──────────────────────────────────────────────────────────
+
+def _on_model_ready():
+    global _model_loaded
+    _model_loaded = True
+    if overlay:
+        overlay.set_loading(False)
 
 
 # ── 상태 변경 콜백 ───────────────────────────────────────────────────────────────
@@ -122,12 +134,16 @@ def main():
         print(f"  모델: {_TIER_MODELS[config.STT_MODE]}  언어: {config.WHISPER_LANG}")
     print("=" * 50)
 
-    threading.Thread(target=stt.load_model, daemon=True).start()
-
     recorder = Recorder(on_level=lambda lvl: overlay.update_level(lvl) if overlay else None)
     sm.on_change(on_state_change)
 
     overlay = Overlay(on_toggle=on_toggle)
+
+    # overlay 생성 후 로딩 시작 — 콜백이 overlay에 안전하게 전달됨
+    threading.Thread(
+        target=lambda: stt.load_model(on_ready=_on_model_ready),
+        daemon=True,
+    ).start()
 
     threading.Thread(target=_start_hotkey_listener, daemon=True).start()
 

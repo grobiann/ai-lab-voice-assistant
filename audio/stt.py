@@ -30,14 +30,17 @@ _POLISH_PROMPT = """\
 
 # ── 공개 API ───────────────────────────────────────────────────────────────────
 
-def load_model():
+def load_model(on_ready=None):
     """
     앱 시작 시 호출 — tier1/2/3는 로컬 Whisper 모델을 미리 로드합니다.
+    on_ready: 로드 완료 후 호출할 콜백 (선택, 어떤 스레드에서도 안전)
     """
     if config.STT_MODE in ("tier1", "tier2", "tier3"):
         _ensure_local_model()
     else:
         print(f"[STT] 모드: {config.STT_MODE} — 로컬 Whisper 불필요")
+    if on_ready:
+        on_ready()
 
 
 def transcribe(audio: np.ndarray, status_cb=None) -> str:

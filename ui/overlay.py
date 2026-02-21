@@ -28,12 +28,26 @@ class Overlay:
     """
 
     def __init__(self, on_toggle: callable):
-        self._on_toggle = on_toggle
-        self._root      = None
-        self._level     = 0
-        self._blink_on  = False
+        self._on_toggle    = on_toggle
+        self._root         = None
+        self._level        = 0
+        self._blink_on     = False
+        self._model_ready  = False   # 모델 로드 완료 여부 (스레드 안전 플래그)
 
     # ── 공개 API (스레드 안전) ───────────────────────────────────────────────────
+
+    def set_loading(self, is_loading: bool):
+        """
+        모델 로딩 상태 전환 — 백그라운드 스레드에서 호출 가능.
+        is_loading=False: '준비 완료' 표시 후 2초 뒤 정상 대기 상태로 전환.
+        """
+        if not is_loading:
+            self._model_ready = True   # _root가 없어도 플래그 먼저 설정
+        if self._root:
+            if is_loading:
+                self._root.after(0, self._show_loading)
+            else:
+                self._root.after(0, self._show_ready)
 
     def update_level(self, level: int):
         self._level = level
@@ -93,7 +107,11 @@ class Overlay:
         self._position_bottom_right(root)
         self._make_draggable(root)
 
-        root.after(100, lambda: self._apply_state(State.IDLE))
+        # 모델이 이미 로드됐으면(cloud 모드 등) 바로 IDLE, 아니면 로딩 표시
+        if self._model_ready:
+            root.after(100, lambda: self._apply_state(State.IDLE))
+        else:
+            root.after(100, self._show_loading)
         root.mainloop()
 
     # ── UI 빌드 ──────────────────────────────────────────────────────────────────
@@ -155,6 +173,21 @@ class Overlay:
         self._lbl_text.pack(fill=tk.X, pady=(6, 0))
 
     # ── 상태별 UI 업데이트 ────────────────────────────────────────────────────────
+
+    def _show_loading(self):
+        """앱 시작 시 모델 로딩 중 표시 — 버튼 비활성화."""
+        self._blink_on = False
+        self._lbl_status.config(text="◌ 로딩 중", fg=C_PROC)
+        self._btn.config(text="대기", bg=C_BTN_STOP, state=tk.DISABLED)
+        self._lbl_text.config(text="모델 로딩 중... 잠시만 기다려 주세요", fg=C_PROC)
+        self._draw_level(force_zero=True)
+
+    def _show_ready(self):
+        """모델 로드 완료 시 '준비 완료' 표시 후 IDLE로 전환."""
+        self._lbl_status.config(text="● 준비 완료", fg=C_LEVEL_FG)
+        self._btn.config(text="시작", bg=C_BTN_REC, state=tk.NORMAL)
+        self._lbl_text.config(text="준비됐습니다! Ctrl+Space 또는 버튼을 눌러 시작", fg=C_LEVEL_FG)
+        self._root.after(2000, lambda: self._apply_state(State.IDLE))
 
     def _apply_state(self, state: State):
         if state == State.IDLE:

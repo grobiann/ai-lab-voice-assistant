@@ -51,8 +51,8 @@ TIER3_MODEL = "medium"     # tier3는 LLM 교정이 핵심 — Whisper를 medium
 WHISPER_LANG    = "ko"         # 언어 고정 (자동 감지보다 빠름)
 WHISPER_DEVICE  = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fallback
 WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
-WHISPER_BEAM    = 2            # 1=greedy(최속) / 2=균형 / 5=최정확
-#                              # beam 2→5 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
+WHISPER_BEAM    = 1            # 1=greedy(최속) / 2=균형 / 5=최정확
+#                              # beam 1→2 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
 
 # ── Whisper 한영 혼합 초기 프롬프트 ─────────────────────────────────────────────
 # ⚠️  주의: 프롬프트 문장을 넣으면 Whisper가 짧은 발화에서 해당 텍스트를 그대로 출력하는
