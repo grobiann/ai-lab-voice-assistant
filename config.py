@@ -2,6 +2,13 @@
 
 import os
 
+# .env 파일 자동 로드 — install.sh / run.bat 에서 별도 처리 없이 API 키 적용됨
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv 미설치 시 환경변수 직접 설정 또는 아래 키값 직접 입력
+
 # ── STT 정확도 단계 선택 ─────────────────────────────────────────────────────────
 #
 #   "tier1" : 1단계 — 빠른 응답 우선

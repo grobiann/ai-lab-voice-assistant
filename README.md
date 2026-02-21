@@ -5,9 +5,35 @@
 
 ---
 
+## 빠른 시작
+
+### Linux / macOS
+
+```bash
+# 1. 설치 (최초 1회)
+chmod +x install.sh && ./install.sh
+
+# 2. 실행
+./run.sh
+```
+
+앱 메뉴(GNOME/KDE)에 **Voice Typer** 항목이 자동 등록됩니다.
+
+### Windows
+
+```
+1. install.bat  더블클릭 → 설치
+2. run.bat      더블클릭 → 실행
+```
+
+> **처음 실행 시** Whisper 모델이 자동 다운로드됩니다 (large-v3 기준 ~1.5GB).
+> VRAM 부족 시 `config.py`에서 `TIER2_MODEL = "small"` 로 변경하세요.
+
+---
+
 ## 주요 기능
 
-- **3가지 STT 모드 선택** — 로컬 / OpenAI API / 로컬+LLM 교정
+- **3단계 정확도 선택** — tier1(빠름) / tier2(균형) / tier3(최고정밀+교정)
 - **로컬 STT** — faster-whisper 기반, 인터넷/API 키 불필요
 - **LLM 교정** — Whisper 결과를 Claude API로 맞춤법·문장 다듬기
 - **커서 위치 자동 입력** — 메모장, 브라우저, 에디터 등 어느 앱에서나 동작
@@ -99,47 +125,45 @@ OPENAI_API_KEY = "sk-..."   # 환경변수 OPENAI_API_KEY 권장
 
 ---
 
-## 설치
+## 설치 상세
 
-```bash
-# 1. 저장소 클론
-git clone <repo-url>
-cd ai-lab-voice-assistant
+위 "빠른 시작"의 `install.sh` / `install.bat` 가 아래 과정을 자동으로 처리합니다.
 
-# 2. 의존성 설치
-pip install -r requirements.txt
-
-# 3. API 키 설정 (openai / local+llm 모드 사용 시)
-cp .env.example .env
-# .env 파일에 API 키 입력
+```
+1. Python 3.8+ 확인
+2. .venv/ 가상환경 생성
+3. requirements.txt 패키지 설치
+4. .env.example → .env 복사 (최초 1회)
+5. [Linux] 앱 메뉴 바로가기 자동 등록
 ```
 
-> **GPU(CUDA) 환경**: `faster-whisper`가 자동으로 CUDA를 감지합니다.
-> PyTorch CUDA 버전이 필요하면 [pytorch.org](https://pytorch.org/get-started/locally/) 참조.
+### GPU(CUDA) 설정
 
-### Linux 추가 설정
+`faster-whisper`가 CUDA를 자동 감지합니다.
+PyTorch가 CUDA를 인식하지 못할 경우 → [pytorch.org](https://pytorch.org/get-started/locally/) 에서 CUDA 버전에 맞는 PyTorch 설치.
 
-pynput 텍스트 입력이 안 될 경우 xdotool 설치:
+### Linux 텍스트 입력 문제
+
+자동 입력이 작동하지 않는 경우 xdotool 설치:
 
 ```bash
 sudo apt install xdotool
 ```
 
----
+### API 키 설정 (tier3 / cloud 모드)
 
-## 실행
+`.env` 파일에 키 입력:
 
 ```bash
-python main.py
+ANTHROPIC_API_KEY=sk-ant-...   # tier3 용
+OPENAI_API_KEY=sk-...          # cloud 용
 ```
-
-`"local"` 모드 최초 실행 시 Whisper 모델이 자동 다운로드됩니다.
 
 ---
 
 ## 사용 방법
 
-1. `python main.py` 실행 → 화면 우하단에 오버레이 창 등장
+1. `./run.sh` (Linux/Mac) 또는 `run.bat` (Windows) 실행 → 화면 우하단에 오버레이 창 등장
 2. 텍스트를 입력할 앱(메모장, 카카오톡 등)에 커서 위치
 3. **`Ctrl+Space`** → 오버레이가 `● REC`로 바뀌면 말하기 시작
 4. **`Ctrl+Space`** 다시 누름 → 인식 후 커서 위치에 텍스트 자동 입력
