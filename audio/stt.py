@@ -1,4 +1,4 @@
-# audio/stt.py — STT 백엔드 (local / openai / local+llm)
+# audio/stt.py — STT 백엔드 (tier1 / tier2 / tier3 / cloud)
 
 import threading
 import numpy as np
@@ -7,6 +7,7 @@ import config
 
 # ── 로컬 모델 상태 ─────────────────────────────────────────────────────────────
 _local_model      = None
+_local_model_name = None   # 현재 로드된 모델 이름 추적
 _local_model_lock = threading.Lock()
 
 
@@ -14,9 +15,10 @@ _local_model_lock = threading.Lock()
 
 def load_model():
     """
-    앱 시작 시 호출 — STT_MODE가 로컬을 포함할 때만 모델을 미리 로드합니다.
+    앱 시작 시 호출 — tier1/2/3는 로컬 모델을 미리 로드합니다.
+    cloud 모드는 로컬 모델이 불필요합니다.
     """
-    if config.STT_MODE in ("local", "local+llm"):
+    if config.STT_MODE in ("tier1", "tier2", "tier3"):
         _ensure_local_model()
     else:
         print(f"[STT] 모드: {config.STT_MODE} — 로컬 모델 불필요")
@@ -35,25 +37,29 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
     mode = config.STT_MODE
 
     try:
-        if mode == "local":
-            if status_cb: status_cb("Whisper 인식 중...")
+        if mode == "tier1":
+            if status_cb: status_cb("1단계 인식 중...")
             return _transcribe_local(audio)
 
-        elif mode == "openai":
-            if status_cb: status_cb("OpenAI API 인식 중...")
-            return _transcribe_openai(audio)
+        elif mode == "tier2":
+            if status_cb: status_cb("2단계 인식 중...")
+            return _transcribe_local(audio)
 
-        elif mode == "local+llm":
-            if status_cb: status_cb("Whisper 인식 중...")
+        elif mode == "tier3":
+            if status_cb: status_cb("3단계 인식 중...")
             raw = _transcribe_local(audio)
             print(f"[STT] Whisper 원문: '{raw}'")
             if not raw:
                 return ""
-            if status_cb: status_cb(f"LLM 교정 중...")
+            if status_cb: status_cb("3단계 교정 중...")
             return _polish_with_llm(raw)
 
+        elif mode == "cloud":
+            if status_cb: status_cb("클라우드 인식 중...")
+            return _transcribe_openai(audio)
+
         else:
-            print(f"[STT] 알 수 없는 STT_MODE: '{mode}'")
+            print(f"[STT] 알 수 없는 STT_MODE: '{mode}'  (tier1 / tier2 / tier3 / cloud)")
             return ""
 
     except Exception as e:
@@ -61,13 +67,26 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
         return ""
 
 
-# ── 방법 1: faster-whisper 로컬 ────────────────────────────────────────────────
+# ── 단계별 모델 선택 헬퍼 ──────────────────────────────────────────────────────
+
+def _tier_model_name() -> str:
+    """현재 STT_MODE에 맞는 Whisper 모델 이름을 반환합니다."""
+    return {
+        "tier1": config.TIER1_MODEL,
+        "tier2": config.TIER2_MODEL,
+        "tier3": config.TIER3_MODEL,
+    }.get(config.STT_MODE, config.TIER2_MODEL)
+
+
+# ── faster-whisper 로컬 백엔드 ──────────────────────────────────────────────────
 
 def _ensure_local_model():
-    global _local_model
+    global _local_model, _local_model_name
+    target = _tier_model_name()
+
     with _local_model_lock:
-        if _local_model is not None:
-            return
+        if _local_model is not None and _local_model_name == target:
+            return   # 이미 알맞은 모델이 로드됨
 
         try:
             from faster_whisper import WhisperModel
@@ -88,13 +107,9 @@ def _ensure_local_model():
 
         compute = config.WHISPER_COMPUTE if device == "cuda" else "int8"
 
-        print(f"[STT] faster-whisper '{config.WHISPER_MODEL}' 로딩 "
-              f"({device}, {compute})...")
-        _local_model = WhisperModel(
-            config.WHISPER_MODEL,
-            device=device,
-            compute_type=compute,
-        )
+        print(f"[STT] faster-whisper '{target}' 로딩 ({device}, {compute})...")
+        _local_model = WhisperModel(target, device=device, compute_type=compute)
+        _local_model_name = target
         print("[STT] 로컬 모델 로드 완료")
 
 
@@ -113,7 +128,7 @@ def _transcribe_local(audio: np.ndarray) -> str:
     return " ".join(seg.text.strip() for seg in segments).strip()
 
 
-# ── 방법 2: OpenAI Whisper API ─────────────────────────────────────────────────
+# ── cloud 백엔드 (OpenAI Whisper API) — tier 미해당, 고급 옵션 ──────────────────
 
 def _transcribe_openai(audio: np.ndarray) -> str:
     import io
@@ -129,12 +144,11 @@ def _transcribe_openai(audio: np.ndarray) -> str:
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
 
-    # numpy 배열 → WAV 바이너리 변환
     buf = io.BytesIO()
     sf.write(buf, audio.astype(np.float32), config.SAMPLE_RATE,
              format="wav", subtype="PCM_16")
     buf.seek(0)
-    buf.name = "audio.wav"   # OpenAI SDK가 확장자로 포맷 판별
+    buf.name = "audio.wav"
 
     result = client.audio.transcriptions.create(
         model="whisper-1",
@@ -144,7 +158,7 @@ def _transcribe_openai(audio: np.ndarray) -> str:
     return result.text.strip()
 
 
-# ── 방법 3: LLM 교정 (faster-whisper 결과를 Claude로 다듬기) ──────────────────────
+# ── LLM 교정 백엔드 (tier3 전용) ──────────────────────────────────────────────
 
 def _polish_with_llm(raw: str) -> str:
     api_key = config.ANTHROPIC_API_KEY
@@ -168,7 +182,7 @@ def _polish_with_llm(raw: str) -> str:
                     "규칙:\n"
                     "- 원문의 내용과 의미를 절대 변경하지 마세요\n"
                     "- 교정된 텍스트만 출력하세요 (설명 없이)\n"
-                    "- 내용이 완전하면 그대로 두세요\n\n"
+                    "- 내용이 이미 완전하면 그대로 두세요\n\n"
                     f"원문: {raw}"
                 ),
             }],

@@ -104,10 +104,22 @@ def main():
     print("=" * 50)
     print("  Voice Typer — 음성 딕테이션 도구")
     print("=" * 50)
+    _TIER_LABELS = {
+        "tier1": "1단계 — 빠른 응답 (faster-whisper small)",
+        "tier2": "2단계 — 균형 (faster-whisper large-v3)",
+        "tier3": "3단계 — 최고 정밀도 (large-v3 + Claude 교정)",
+        "cloud": "클라우드 (OpenAI Whisper API)",
+    }
+    _TIER_MODELS = {
+        "tier1": config.TIER1_MODEL,
+        "tier2": config.TIER2_MODEL,
+        "tier3": config.TIER3_MODEL,
+    }
+    tier_label = _TIER_LABELS.get(config.STT_MODE, config.STT_MODE)
     print(f"  단축키: Ctrl+Space  |  종료: 오버레이 × 버튼")
-    print(f"  STT 모드: {config.STT_MODE}")
-    if config.STT_MODE in ("local", "local+llm"):
-        print(f"  Whisper 모델: {config.WHISPER_MODEL}  언어: {config.WHISPER_LANG}")
+    print(f"  STT: {tier_label}")
+    if config.STT_MODE in _TIER_MODELS:
+        print(f"  모델: {_TIER_MODELS[config.STT_MODE]}  언어: {config.WHISPER_LANG}")
     print("=" * 50)
 
     threading.Thread(target=stt.load_model, daemon=True).start()

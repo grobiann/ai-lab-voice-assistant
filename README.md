@@ -18,60 +18,84 @@
 
 ---
 
-## STT 모드
+## STT 정확도 단계
 
-`config.py`의 `STT_MODE` 값 하나로 전환합니다.
-
-### `"local"` — faster-whisper 로컬 실행 (기본값)
+`config.py`의 `STT_MODE` 한 줄만 바꾸면 됩니다.
 
 ```python
-STT_MODE = "local"
-WHISPER_MODEL = "large-v3"   # 모델 크기 선택
+STT_MODE = "tier2"   # 기본값
 ```
 
-- API 키, 인터넷 연결 불필요
-- GPU(CUDA) 권장 — CPU도 동작하나 느림
-- faster-whisper는 원본 Whisper 대비 2~4배 빠름
-
-| 모델 | VRAM | 속도 (GPU) | 한국어 정확도 |
-|------|------|-----------|-------------|
-| tiny | ~1GB | 매우 빠름 | ★★☆☆☆ |
-| base | ~1GB | 빠름 | ★★★☆☆ |
-| small | ~2GB | 보통 | ★★★★☆ |
-| large-v3 | ~3GB\* | 보통 | ★★★★★ |
-
-\* faster-whisper는 int8/float16 양자화로 원본 대비 VRAM 절반
+| 단계 | 속도 | 정확도 | 비용 | 필요 조건 |
+|------|------|--------|------|----------|
+| `tier1` | ★★★★★ | ★★★☆☆ | 무료 | GPU 권장 |
+| **`tier2`** (기본) | ★★★★☆ | ★★★★★ | 무료 | GPU 권장 |
+| `tier3` | ★★★☆☆ | ★★★★★+교정 | Claude API | GPU + API 키 |
+| `cloud` | ★★★★☆ | ★★★★☆ | $0.006/분 | OpenAI API 키 |
 
 ---
 
-### `"openai"` — OpenAI Whisper API
+### 1단계 `"tier1"` — 빠른 응답 우선
 
 ```python
-STT_MODE = "openai"
-OPENAI_API_KEY = "sk-..."   # 또는 환경변수 OPENAI_API_KEY
+STT_MODE  = "tier1"
+TIER1_MODEL = "small"   # 기본값, 필요 시 변경 가능
 ```
 
-- 인터넷 및 OpenAI API 키 필요
+- **faster-whisper small 모델** 사용
+- GPU VRAM ~2GB, 추론 시간 ~0.5-1초
+- API 키, 인터넷 불필요
+- 권장 환경: 저사양 GPU / CPU 전용 머신, 실시간 응답이 최우선인 경우
+
+---
+
+### 2단계 `"tier2"` — 속도·정확도 균형 (기본값, 개발·테스트 기준)
+
+```python
+STT_MODE    = "tier2"
+TIER2_MODEL = "large-v3"   # 기본값
+```
+
+- **faster-whisper large-v3 모델** 사용
+- GPU VRAM ~3GB (float16 양자화로 원본 Whisper 대비 절반)
+- API 키, 인터넷 불필요
+- 추론 시간 ~1-3초 (GPU) / ~15-30초 (CPU)
+- 한국어 정확도 최고 수준 — 대부분의 일상 사용에 충분
+
+> 현재 이 모드를 기준으로 개발·테스트합니다.
+
+---
+
+### 3단계 `"tier3"` — 최고 정밀도 (맞춤법·문장 부호 자동 교정)
+
+```python
+STT_MODE          = "tier3"
+TIER3_MODEL       = "large-v3"   # 기본값
+ANTHROPIC_API_KEY = "sk-ant-..."   # 환경변수 ANTHROPIC_API_KEY 권장
+```
+
+- **faster-whisper large-v3** 인식 후 **Claude Haiku**가 후처리
+- 맞춤법, 띄어쓰기, 문장 부호, 구어체→문어체 변환
+- 추론 시간 ~3-6초 (Whisper + API 왕복)
+- 권장 환경: 문서 작성, 이메일, 전문 용어·빠른 발화가 많은 경우
+
+```
+Whisper 원문: "오늘미팅에서 중요한내용을 논의했어 다음주까지 보고서 작성해야돼"
+Claude 교정: "오늘 미팅에서 중요한 내용을 논의했어. 다음 주까지 보고서 작성해야 돼."
+```
+
+---
+
+### 클라우드 `"cloud"` — 로컬 GPU 없는 환경용 (고급 옵션)
+
+```python
+STT_MODE       = "cloud"
+OPENAI_API_KEY = "sk-..."   # 환경변수 OPENAI_API_KEY 권장
+```
+
+- **OpenAI Whisper API** (whisper-1, large-v2 기반)
 - 로컬 GPU 불필요
-- 비용: $0.006/분 (1분 ≈ 8원)
-
----
-
-### `"local+llm"` — faster-whisper + Claude 교정
-
-```python
-STT_MODE      = "local+llm"
-WHISPER_MODEL = "large-v3"
-ANTHROPIC_API_KEY = "sk-ant-..."   # 또는 환경변수 ANTHROPIC_API_KEY
-```
-
-- Whisper 인식 → Claude Haiku가 맞춤법·띄어쓰기·문장 부호 교정
-- 전문 용어, 구어체 표현, 빠른 발화에서 효과적
-
-```
-Whisper 원문: "오늘미팅에서 중요한내용을 논의했어"
-Claude 교정: "오늘 미팅에서 중요한 내용을 논의했어."
-```
+- 비용: $0.006/분 (1분 ≈ 8원), 인터넷 필수
 
 ---
 
@@ -129,15 +153,17 @@ python main.py
 
 | 항목 | 기본값 | 설명 |
 |------|--------|------|
-| `STT_MODE` | `"local"` | `"local"` / `"openai"` / `"local+llm"` |
-| `WHISPER_MODEL` | `"large-v3"` | 로컬 모드 모델 크기 |
+| `STT_MODE` | `"tier2"` | `"tier1"` / `"tier2"` / `"tier3"` / `"cloud"` |
+| `TIER1_MODEL` | `"small"` | 1단계 Whisper 모델 크기 |
+| `TIER2_MODEL` | `"large-v3"` | 2단계 Whisper 모델 크기 |
+| `TIER3_MODEL` | `"large-v3"` | 3단계 Whisper 모델 크기 |
 | `WHISPER_LANG` | `"ko"` | 인식 언어 |
 | `WHISPER_DEVICE` | `"cuda"` | `"cuda"` / `"cpu"` |
 | `WHISPER_COMPUTE` | `"float16"` | GPU: `"float16"` / CPU: `"int8"` |
 | `WHISPER_BEAM` | `5` | Beam search 크기 (클수록 정확, 느림) |
-| `OPENAI_API_KEY` | `""` | OpenAI API 키 |
-| `ANTHROPIC_API_KEY` | `""` | Anthropic API 키 |
-| `LLM_MODEL` | `"claude-haiku-4-5-20251001"` | LLM 교정 모델 |
+| `OPENAI_API_KEY` | `""` | OpenAI API 키 (cloud 모드) |
+| `ANTHROPIC_API_KEY` | `""` | Anthropic API 키 (tier3 모드) |
+| `LLM_MODEL` | `"claude-haiku-4-5-20251001"` | tier3 교정 모델 |
 | `TYPER_TRAILING_SPACE` | `True` | 텍스트 끝 공백 추가 |
 
 ---

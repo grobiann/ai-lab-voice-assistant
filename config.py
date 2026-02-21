@@ -2,18 +2,40 @@
 
 import os
 
-# ── STT 모드 선택 ───────────────────────────────────────────────────────────────
+# ── STT 정확도 단계 선택 ─────────────────────────────────────────────────────────
 #
-#   "local"     : faster-whisper 로컬 실행 (GPU 권장, API 키 불필요)
-#   "openai"    : OpenAI Whisper API (인터넷 필요, OPENAI_API_KEY 필요)
-#   "local+llm" : faster-whisper 인식 후 Claude API로 교정 (두 API 키 모두 필요)
+#   "tier1" : 1단계 — 빠른 응답 우선
+#             faster-whisper (small 모델) 로컬 실행
+#             속도: ★★★★★  정확도: ★★★☆☆  비용: 무료
+#             사용 시나리오: 저사양 GPU / CPU 환경, 실시간에 가까운 응답이 필요할 때
+#             VRAM: ~2GB, 추론 시간: ~0.5-1초 (GPU)
 #
-STT_MODE = "local"
+#   "tier2" : 2단계 — 속도와 정확도의 균형  ← 기본값, 이 모드로 개발·테스트
+#             faster-whisper (large-v3 모델) 로컬 실행
+#             속도: ★★★★☆  정확도: ★★★★★  비용: 무료
+#             사용 시나리오: 일반적인 사용, API 키 없이 최고 수준의 로컬 정확도
+#             VRAM: ~3GB (float16 양자화), 추론 시간: ~1-3초 (GPU)
+#
+#   "tier3" : 3단계 — 최고 정밀도 (맞춤법·띄어쓰기·문장 부호 자동 교정)
+#             faster-whisper (large-v3) + Claude Haiku API 교정
+#             속도: ★★★☆☆  정확도: ★★★★★+교정  비용: Claude API 과금
+#             사용 시나리오: 문서 작성, 이메일, 전문 용어가 많은 경우
+#             VRAM: ~3GB, 추론 시간: ~3-6초 (Whisper + API 왕복)
+#             ANTHROPIC_API_KEY 필요
+#
+#   "cloud" : 클라우드 대체 — 로컬 GPU 없는 환경용 (고급 옵션)
+#             OpenAI Whisper API (whisper-1 / large-v2 기반)
+#             속도: ★★★★☆  정확도: ★★★★☆  비용: $0.006/분
+#             OPENAI_API_KEY 필요
+#
+STT_MODE = "tier2"
 
-# ── Whisper 로컬 설정 (STT_MODE = "local" | "local+llm") ───────────────────────
-# 모델 크기: tiny | base | small | medium | large-v2 | large-v3
-# GTX 1060(6GB) 권장: small  /  RTX 3070+ 권장: large-v3
-WHISPER_MODEL   = "large-v3"
+# ── 단계별 Whisper 모델 ──────────────────────────────────────────────────────────
+TIER1_MODEL = "small"      # 빠름, VRAM ~2GB
+TIER2_MODEL = "large-v3"   # 균형, VRAM ~3GB (float16 양자화)
+TIER3_MODEL = "large-v3"   # tier3도 large-v3 사용 (LLM 교정이 핵심)
+
+# ── 공통 Whisper 설정 ────────────────────────────────────────────────────────────
 WHISPER_LANG    = "ko"         # 언어 고정 (자동 감지보다 빠름)
 WHISPER_DEVICE  = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fallback
 WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
@@ -24,7 +46,7 @@ WHISPER_BEAM    = 5            # Beam search 크기 (클수록 정확하지만 �
 OPENAI_API_KEY    = os.environ.get("OPENAI_API_KEY",    "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# ── LLM 교정 설정 (STT_MODE = "local+llm") ────────────────────────────────────
+# ── LLM 교정 설정 (STT_MODE = "tier3") ────────────────────────────────────────
 LLM_MODEL = "claude-haiku-4-5-20251001"   # 빠르고 저렴한 모델 권장
 
 # ── 오디오 ─────────────────────────────────────────────────────────────────────
