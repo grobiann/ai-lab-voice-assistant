@@ -2,6 +2,7 @@
 # main.py — 음성 딕테이션 앱 진입점
 
 import threading
+import time
 
 from core.state_machine import StateMachine, State
 from audio.recorder     import Recorder
@@ -60,13 +61,14 @@ def on_state_change(prev: State, new: State):
 def _transcribe_and_type(audio):
     """STT 추론 → 클립보드 저장(동기) → 커서 위치 입력 → IDLE 복귀."""
     text = stt.transcribe(audio, status_cb=overlay.set_processing_text)
-    print(f"[STT] 최종 결과: '{text}'")
 
     if text:
         # 1. 클립보드에 저장 — 완료될 때까지 대기 (동기)
         overlay.set_clipboard_sync(text)
         # 2. 커서 위치에 직접 타이핑 시도
+        t_type = time.perf_counter()
         type_at_cursor(text)
+        print(f"[Typer] 입력 완료: {time.perf_counter()-t_type:.2f}s")
 
     overlay.show_result(text)
     sm.to_idle()

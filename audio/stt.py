@@ -1,5 +1,6 @@
 # audio/stt.py — STT 백엔드 (tier1 / tier2 / tier3 / cloud)
 
+import time
 import threading
 import numpy as np
 
@@ -20,7 +21,7 @@ _POLISH_PROMPT = """\
 1. 한국어 맞춤법·띄어쓰기·문장 부호를 교정하세요.
 2. 영어 단어·외래어가 잘못 인식된 경우 올바른 표기로 수정하세요.
    예) '유투브' → 'YouTube', '지피티' → 'GPT', '에이피아이' → 'API',
-       '아이폰' → 'iPhone', '챗지피티' → 'ChatGPT'
+       '아이폰' → 'iPhone', '챗지피티' → 'ChatGPT', '파이썬' → 'Python'
 3. 영어 단어는 문맥에 맞게 영문 또는 한글 외래어 표기로 통일하세요.
 4. 원문의 내용·의미를 절대 변경하지 마세요.
 5. 이미 올바른 문장이면 그대로 반환하세요.
@@ -53,30 +54,42 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
     if audio is None or len(audio) == 0:
         return ""
 
-    mode = config.STT_MODE
+    mode  = config.STT_MODE
+    model = _tier_model_name() if mode != "cloud" else "cloud"
+    dur   = len(audio) / config.SAMPLE_RATE
+    rms   = float(np.sqrt(np.mean(audio ** 2))) if len(audio) > 0 else 0.0
+
+    print(f"\n{'═'*54}")
+    print(f"[Pipeline] {mode} / {model}  |  오디오 {dur:.1f}s  RMS {rms:.4f}")
+
+    t_start = time.perf_counter()
+    text    = ""
 
     try:
         if mode == "tier1":
             if status_cb: status_cb("1단계 인식 중...")
-            return _transcribe_local(audio)
+            text = _transcribe_local(audio)
 
         elif mode == "tier2":
             if status_cb: status_cb("2단계 인식 중...")
-            return _transcribe_local(audio)
+            text = _transcribe_local(audio)
 
         elif mode == "tier3":
             if status_cb: status_cb("3단계 인식 중...")
             raw = _transcribe_local(audio)
-            print(f"[STT] Whisper 원문: '{raw}'")
             if not raw:
                 return ""
             backend = config.LLM_BACKEND.lower()
-            if status_cb: status_cb(f"3단계 교정 중... ({backend})")
-            return _polish_with_llm(raw)
+            if status_cb: status_cb(f"교정 중... ({backend})")
+            t_llm = time.perf_counter()
+            text  = _polish_with_llm(raw)
+            print(f"  LLM ({backend}): {time.perf_counter()-t_llm:.2f}s")
+            print(f"    '{raw}'")
+            print(f"    → '{text}'")
 
         elif mode == "cloud":
             if status_cb: status_cb("클라우드 인식 중...")
-            return _transcribe_openai(audio)
+            text = _transcribe_openai(audio)
 
         else:
             print(f"[STT] 알 수 없는 STT_MODE: '{mode}'  (tier1/tier2/tier3/cloud)")
@@ -85,6 +98,11 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
     except Exception as e:
         print(f"[STT] 오류 ({mode}): {e}")
         return ""
+
+    elapsed = time.perf_counter() - t_start
+    print(f"[Pipeline] 총 {elapsed:.2f}s  →  '{text}'")
+    print(f"{'═'*54}")
+    return text
 
 
 # ── 단계별 모델 선택 헬퍼 ──────────────────────────────────────────────────────
@@ -101,7 +119,7 @@ def _tier_model_name() -> str:
 
 def _ensure_local_model():
     global _local_model, _local_model_name
-    target = _tier_model_name()
+    target   = _tier_model_name()
     do_warmup = False
 
     with _local_model_lock:
@@ -128,7 +146,7 @@ def _ensure_local_model():
         compute = config.WHISPER_COMPUTE if device == "cuda" else "int8"
 
         print(f"[STT] faster-whisper '{target}' 로딩 ({device}, {compute})...")
-        _local_model = WhisperModel(target, device=device, compute_type=compute)
+        _local_model      = WhisperModel(target, device=device, compute_type=compute)
         _local_model_name = target
         print("[STT] 로컬 모델 로드 완료")
         do_warmup = (device == "cuda")
@@ -149,22 +167,43 @@ def _warmup(model) -> None:
 
 
 def _transcribe_local(audio: np.ndarray) -> str:
+    """faster-whisper 추론 — 세그먼트별 상세 로그 포함."""
     _ensure_local_model()
     with _local_model_lock:
         model = _local_model
 
-    prompt = config.WHISPER_INITIAL_PROMPT or None
+    t0 = time.perf_counter()
 
-    segments, _ = model.transcribe(
+    temperature = getattr(config, "WHISPER_TEMPERATURE", [0, 0.2])
+    prompt      = config.WHISPER_INITIAL_PROMPT or None
+
+    segs, _ = model.transcribe(
         audio.astype(np.float32),
         language=config.WHISPER_LANG,
         beam_size=config.WHISPER_BEAM,
         initial_prompt=prompt,
-        condition_on_previous_text=False,   # 이전 세그먼트 컨텍스트 불필요 → 속도↑
+        condition_on_previous_text=False,
         vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 300},
+        temperature=temperature,
     )
-    return " ".join(seg.text.strip() for seg in segments).strip()
+
+    parts = []
+    for i, seg in enumerate(segs):
+        t = seg.text.strip()
+        if not t:
+            continue
+        print(
+            f"  │ [{i+1}] {seg.start:.1f}s→{seg.end:.1f}s  "
+            f"logprob={seg.avg_logprob:.2f}  no_speech={seg.no_speech_prob:.2f}"
+        )
+        print(f"  │     → '{t}'")
+        parts.append(t)
+
+    elapsed = time.perf_counter() - t0
+    result  = " ".join(parts).strip()
+    print(f"  └ Whisper {elapsed:.2f}s  → '{result}'")
+    return result
 
 
 # ── cloud 백엔드 (OpenAI Whisper API) ──────────────────────────────────────────
@@ -232,9 +271,7 @@ def _polish_ollama(raw: str) -> str:
         max_tokens=500,
         temperature=0.1,   # 낮은 temperature = 일관된 교정
     )
-    polished = resp.choices[0].message.content.strip()
-    print(f"[STT] Ollama 교정 ({config.OLLAMA_MODEL}): '{raw}' → '{polished}'")
-    return polished
+    return resp.choices[0].message.content.strip()
 
 
 # ── LLM 백엔드 2: Groq (클라우드, 무료 티어) ──────────────────────────────────
@@ -259,9 +296,7 @@ def _polish_groq(raw: str) -> str:
         max_tokens=500,
         temperature=0.1,
     )
-    polished = resp.choices[0].message.content.strip()
-    print(f"[STT] Groq 교정 ({config.GROQ_LLM_MODEL}): '{raw}' → '{polished}'")
-    return polished
+    return resp.choices[0].message.content.strip()
 
 
 # ── LLM 백엔드 3: Claude (유료, 최고 품질) ────────────────────────────────────
@@ -282,6 +317,4 @@ def _polish_claude(raw: str) -> str:
         max_tokens=500,
         messages=[{"role": "user", "content": _POLISH_PROMPT.format(raw=raw)}],
     )
-    polished = msg.content[0].text.strip()
-    print(f"[STT] Claude 교정: '{raw}' → '{polished}'")
-    return polished
+    return msg.content[0].text.strip()

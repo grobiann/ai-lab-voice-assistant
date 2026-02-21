@@ -54,24 +54,19 @@ WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
 WHISPER_BEAM    = 1            # 1=greedy(최속) / 2=균형 / 5=최정확
 #                              # beam 1→2 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
 
-# ── Whisper 한영 혼합 초기 프롬프트 (어휘 힌트 토큰) ─────────────────────────────
+# ── Whisper 온도 — 불확실 구간 자동 재시도 ────────────────────────────────────────
 #
-# Whisper에 "이런 단어가 나올 수 있다"는 어휘 힌트를 주어 한영 혼합 인식률을 높입니다.
-# 속도 변화 없이 정확도를 개선하는 가장 안전한 방법입니다.
-#
-# ✅ 안전한 형식 — 단어·고유명사 나열 (현재 설정):
-#      Whisper가 어휘 참고용으로만 사용 → 환각(hallucination) 없음
-#
-# ⛔ 위험한 형식 — 완전한 문장 (예: "한국어 음성이며 영어 단어가 포함됩니다"):
-#      Whisper가 해당 문장을 그대로 출력하는 환각 현상 발생 가능
-#
-# 자신의 발화에 맞게 자주 쓰는 용어를 자유롭게 추가·제거하세요.
-WHISPER_INITIAL_PROMPT = (
-    "YouTube, API, GPT, ChatGPT, GPU, CPU, RAM, SSD, iPhone, MacBook, "
-    "Python, GitHub, Docker, npm, Node.js, React, Linux, Ubuntu, "
-    "LLM, AI, UI, UX, URL, HTTP, JSON, SDK, IDE, PC, Mac, "
-    "Whisper, Ollama, Groq, Claude, OpenAI"
-)
+# [0, 0.2]   : greedy(0)로 먼저 시도 → 신뢰도 낮은 구간은 0.2 로 재시도 (기본 권장)
+#              단어 목록 없이 한영 혼합·전문용어 인식률을 높이는 범용적 방법입니다.
+# 0          : greedy 전용 (최속, 재시도 없음)
+# [0, 0.2, 0.4] : 재시도 단계 추가 (더 느리지만 불명확한 발화에 유리)
+WHISPER_TEMPERATURE = [0, 0.2]
+
+# ── Whisper 초기 프롬프트 (고급·선택 설정) ──────────────────────────────────────
+# 기본값 ""(비활성) — WHISPER_TEMPERATURE 방식이 더 범용적입니다.
+# ✅ 안전한 형식: 단어 나열  예) "API, GPT, YouTube"  → 환각 없음
+# ⛔ 위험한 형식: 완전한 문장  → Whisper가 문장을 그대로 출력하는 환각 발생
+WHISPER_INITIAL_PROMPT = ""
 
 # ── LLM 교정 백엔드 (STT_MODE = "tier3") ────────────────────────────────────────
 #
