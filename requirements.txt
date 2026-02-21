@@ -1,8 +1,15 @@
-# Offline Korean speech recognition
-vosk>=0.3.38
+# STT — local Whisper (no API key needed)
+openai-whisper>=20231117
 
-# Microphone recording (pre-built PortAudio binaries included, no system headers needed)
+# Microphone recording
 sounddevice>=0.4.6
 
-# Audio resampling (needed when mic native rate != 16kHz, e.g. 44100Hz)
+# Audio processing
 numpy>=1.21.0
+
+# Global hotkey listener
+pynput>=1.7.6
+
+# Clipboard + paste at cursor position
+pyperclip>=1.8.2
+pyautogui>=0.9.54

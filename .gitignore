@@ -3,3 +3,7 @@ models/
 .env
 *.zip
 *.log
+__pycache__/
+*.pyc
+*.pyo
+.whisper_cache/
