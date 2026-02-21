@@ -56,6 +56,22 @@ class Overlay:
         if self._root:
             self._root.after(0, lambda: self._display_result(text))
 
+    def set_clipboard(self, text: str):
+        """
+        tkinter 클립보드에 텍스트 저장 — 아무 스레드에서 호출 가능.
+        외부 도구(xclip/xsel) 불필요. 이미 실행 중인 tk 창을 통해 직접 처리.
+        """
+        if self._root:
+            self._root.after(0, lambda: self._do_set_clipboard(text))
+
+    def _do_set_clipboard(self, text: str):
+        try:
+            self._root.clipboard_clear()
+            self._root.clipboard_append(text)
+            print(f"[Clipboard] 저장 완료: '{text[:30]}{'...' if len(text) > 30 else ''}'")
+        except Exception as e:
+            print(f"[Clipboard] 저장 실패: {e}")
+
     # ── 메인 루프 ────────────────────────────────────────────────────────────────
 
     def run(self):

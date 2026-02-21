@@ -52,10 +52,14 @@ def on_state_change(prev: State, new: State):
 
 
 def _transcribe_and_type(audio):
-    """Whisper 추론 → 커서 위치에 입력 → IDLE 복귀."""
+    """Whisper 추론 → 클립보드 저장 → 커서 위치에 입력 → IDLE 복귀."""
     text = stt.transcribe(audio)
+    print(f"[STT] 인식 결과: '{text}'")
 
     if text:
+        # 1. 항상 클립보드에 저장 (타이핑 성공 여부와 무관)
+        overlay.set_clipboard(text)
+        # 2. 커서 위치에 직접 타이핑 시도
         type_at_cursor(text)
 
     overlay.show_result(text)
@@ -68,9 +72,11 @@ def _start_hotkey_listener():
     try:
         from pynput import keyboard
 
-        combo = "+" .join(
-            f"<{m}>" for m in sorted(config.HOTKEY_MODIFIERS)
-        ) + f"+{config.HOTKEY_KEY}"
+        # 단일 문자는 그대로, 특수키 이름(space, enter 등)은 <> 로 감쌈
+        key = config.HOTKEY_KEY
+        key_part = key if len(key) == 1 else f"<{key}>"
+        combo = "+".join(f"<{m}>" for m in sorted(config.HOTKEY_MODIFIERS)) + f"+{key_part}"
+        print(f"[Hotkey] 등록: {combo}")
 
         def on_activate():
             on_toggle()

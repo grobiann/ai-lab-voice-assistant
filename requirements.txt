@@ -9,6 +9,3 @@ numpy>=1.21.0
 
 # Global hotkey listener
 pynput>=1.7.6
-
-# Clipboard fallback (xclip/xsel 미설치 환경용)
-pyperclip>=1.8.2
