@@ -99,6 +99,7 @@ def _tier_model_name() -> str:
 def _ensure_local_model():
     global _local_model, _local_model_name
     target = _tier_model_name()
+    do_warmup = False
 
     with _local_model_lock:
         if _local_model is not None and _local_model_name == target:
@@ -127,10 +128,11 @@ def _ensure_local_model():
         _local_model = WhisperModel(target, device=device, compute_type=compute)
         _local_model_name = target
         print("[STT] 로컬 모델 로드 완료")
+        do_warmup = (device == "cuda")
 
-        # GPU 워밍업: CUDA 커널을 미리 컴파일해 첫 실제 추론의 지연을 제거
-        if device == "cuda":
-            _warmup(_local_model)
+    # 워밍업은 lock 밖에서 실행 — lock 점유 중 차단 문제 해결
+    if do_warmup:
+        _warmup(_local_model)
 
 
 def _warmup(model) -> None:

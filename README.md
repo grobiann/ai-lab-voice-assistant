@@ -26,7 +26,7 @@ chmod +x install.sh && ./install.sh
 2. run.bat      더블클릭 → 실행
 ```
 
-> **처음 실행 시** Whisper 모델이 자동 다운로드됩니다 (large-v3 기준 ~1.5GB).
+> **처음 실행 시** Whisper 모델이 자동 다운로드됩니다 (medium 기준 ~600MB).
 > VRAM 부족 시 `config.py`에서 `TIER2_MODEL = "small"` 로 변경하세요.
 
 ---
@@ -79,14 +79,14 @@ TIER1_MODEL = "small"   # 기본값, 필요 시 변경 가능
 
 ```python
 STT_MODE    = "tier2"
-TIER2_MODEL = "large-v3"   # 기본값
+TIER2_MODEL = "medium"   # 기본값 (large-v3 대비 ~3배 빠름)
 ```
 
-- **faster-whisper large-v3 모델** 사용
-- GPU VRAM ~3GB (float16 양자화로 원본 Whisper 대비 절반)
+- **faster-whisper medium 모델** 사용
+- GPU VRAM ~1.5GB, 추론 시간 ~1-2초 (GPU)
 - API 키, 인터넷 불필요
-- 추론 시간 ~1-3초 (GPU) / ~15-30초 (CPU)
-- 한국어 정확도 최고 수준 — 대부분의 일상 사용에 충분
+- 한국어 일상 발화 정확도 우수 — large-v3와 체감 차이 미미
+- 더 높은 정확도가 필요하면 `TIER2_MODEL = "large-v3"` 으로 변경 (~4초)
 
 > 현재 이 모드를 기준으로 개발·테스트합니다.
 
