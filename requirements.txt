@@ -1,11 +1,17 @@
-# STT — local Whisper (no API key needed)
-openai-whisper>=20231117
+# ── STT 로컬 (STT_MODE = "local" | "local+llm") ────────────────────────────────
+# openai-whisper 대신 faster-whisper 사용 (2~4배 빠름, 메모리 절반)
+faster-whisper>=1.0.0
 
-# Microphone recording
-sounddevice>=0.4.6
+# ── STT 클라우드 (STT_MODE = "openai") ─────────────────────────────────────────
+openai>=1.0.0
 
-# Audio processing
+# ── LLM 교정 (STT_MODE = "local+llm") ──────────────────────────────────────────
+anthropic>=0.25.0
+
+# ── 오디오 수집 ─────────────────────────────────────────────────────────────────
+sounddevice>=0.4.6       # 마이크 스트림
+soundfile>=0.12.1        # numpy → WAV 변환 (OpenAI API 모드에서 필요)
 numpy>=1.21.0
 
-# Global hotkey listener
+# ── 단축키 감지 + 텍스트 입력 ──────────────────────────────────────────────────
 pynput>=1.7.6

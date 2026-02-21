@@ -48,6 +48,11 @@ class Overlay:
         if self._root:
             self._root.after(0, lambda: self._display_result(text))
 
+    def set_processing_text(self, text: str):
+        """처리 단계 텍스트 업데이트 — 아무 스레드에서 호출 가능 (PROCESSING 상태 중)."""
+        if self._root:
+            self._root.after(0, lambda: self._lbl_text.config(text=text, fg=C_PROC))
+
     def set_clipboard_sync(self, text: str, timeout: float = 1.0):
         """
         tkinter 클립보드에 저장하고 완료될 때까지 대기 (동기 호출).
