@@ -54,13 +54,24 @@ WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
 WHISPER_BEAM    = 1            # 1=greedy(최속) / 2=균형 / 5=최정확
 #                              # beam 1→2 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
 
-# ── Whisper 한영 혼합 초기 프롬프트 ─────────────────────────────────────────────
-# ⚠️  주의: 프롬프트 문장을 넣으면 Whisper가 짧은 발화에서 해당 텍스트를 그대로 출력하는
-#          "환각(hallucination)" 현상이 발생할 수 있습니다.
-# 기본값은 빈 문자열("")로 비활성화합니다.
-# 사용하려면 자신이 자주 말하는 고유명사·기술 용어만 단어 나열 형태로 짧게 작성:
-#   예) WHISPER_INITIAL_PROMPT = "API, GPU, ChatGPT, YouTube, iPhone"
-WHISPER_INITIAL_PROMPT = ""
+# ── Whisper 한영 혼합 초기 프롬프트 (어휘 힌트 토큰) ─────────────────────────────
+#
+# Whisper에 "이런 단어가 나올 수 있다"는 어휘 힌트를 주어 한영 혼합 인식률을 높입니다.
+# 속도 변화 없이 정확도를 개선하는 가장 안전한 방법입니다.
+#
+# ✅ 안전한 형식 — 단어·고유명사 나열 (현재 설정):
+#      Whisper가 어휘 참고용으로만 사용 → 환각(hallucination) 없음
+#
+# ⛔ 위험한 형식 — 완전한 문장 (예: "한국어 음성이며 영어 단어가 포함됩니다"):
+#      Whisper가 해당 문장을 그대로 출력하는 환각 현상 발생 가능
+#
+# 자신의 발화에 맞게 자주 쓰는 용어를 자유롭게 추가·제거하세요.
+WHISPER_INITIAL_PROMPT = (
+    "YouTube, API, GPT, ChatGPT, GPU, CPU, RAM, SSD, iPhone, MacBook, "
+    "Python, GitHub, Docker, npm, Node.js, React, Linux, Ubuntu, "
+    "LLM, AI, UI, UX, URL, HTTP, JSON, SDK, IDE, PC, Mac, "
+    "Whisper, Ollama, Groq, Claude, OpenAI"
+)
 
 # ── LLM 교정 백엔드 (STT_MODE = "tier3") ────────────────────────────────────────
 #
