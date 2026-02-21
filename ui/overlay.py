@@ -122,7 +122,7 @@ class Overlay:
 
         # ─ 하단 행: 텍스트 결과 ─
         self._lbl_text = tk.Label(
-            inner, text="Ctrl+Alt+Space 또는 버튼을 눌러 시작",
+            inner, text="Ctrl+Space 또는 버튼을 눌러 시작",
             fg=C_IDLE, bg=C_BG,
             font=("Segoe UI", 9),
             wraplength=W - 30, justify=tk.LEFT, anchor="w",
@@ -162,7 +162,7 @@ class Overlay:
 
     def _reset_text(self):
         self._lbl_text.config(
-            text="Ctrl+Alt+Space 또는 버튼을 눌러 시작", fg=C_IDLE,
+            text="Ctrl+Space 또는 버튼을 눌러 시작", fg=C_IDLE,
         )
 
     # ── 레벨 미터 ────────────────────────────────────────────────────────────────

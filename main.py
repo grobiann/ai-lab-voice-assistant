@@ -94,7 +94,7 @@ def main():
     print("=" * 50)
     print("  Voice Typer — 음성 딕테이션 도구")
     print("=" * 50)
-    print(f"  단축키: Ctrl+Alt+Space")
+    print(f"  단축키: Ctrl+Space")
     print(f"  Whisper 모델: {config.WHISPER_MODEL}  언어: {config.WHISPER_LANG}")
     print("=" * 50)
 
