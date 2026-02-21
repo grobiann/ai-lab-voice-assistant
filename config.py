@@ -37,15 +37,22 @@ except ImportError:
 STT_MODE = "tier2"
 
 # ── 단계별 Whisper 모델 ──────────────────────────────────────────────────────────
-TIER1_MODEL = "small"      # 빠름, VRAM ~2GB
-TIER2_MODEL = "large-v3"   # 균형, VRAM ~3GB (float16 양자화)
-TIER3_MODEL = "large-v3"   # tier3도 large-v3 사용 (LLM 교정이 핵심)
+# 속도 vs 정확도 트레이드오프 (mid-range GPU 기준 추론 시간):
+#   tiny   ~0.3초  ★★☆☆☆ 정확도
+#   base   ~0.5초  ★★★☆☆ 정확도
+#   small  ~0.8초  ★★★★☆ 정확도
+#   medium ~1.5초  ★★★★★ 정확도  ← tier2 기본 (2-3초 목표)
+#   large-v3 ~4초  ★★★★★ 정확도 (medium과 한국어 일상 발화 차이 미미)
+TIER1_MODEL = "small"      # 빠름, VRAM ~1GB
+TIER2_MODEL = "medium"     # 균형, VRAM ~1.5GB  (large-v3 대비 ~3배 빠름)
+TIER3_MODEL = "medium"     # tier3는 LLM 교정이 핵심 — Whisper를 medium으로 속도 확보
 
 # ── 공통 Whisper 설정 ────────────────────────────────────────────────────────────
 WHISPER_LANG    = "ko"         # 언어 고정 (자동 감지보다 빠름)
 WHISPER_DEVICE  = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fallback
 WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
-WHISPER_BEAM    = 5            # Beam search 크기 (클수록 정확하지만 느림, 기본 5)
+WHISPER_BEAM    = 2            # 1=greedy(최속) / 2=균형 / 5=최정확
+#                              # beam 2→5 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
 
 # ── Whisper 한영 혼합 초기 프롬프트 ─────────────────────────────────────────────
 # 한국어 + 영어 외래어·기술 용어가 섞인 발화에서 인식률을 높이는 힌트 문장

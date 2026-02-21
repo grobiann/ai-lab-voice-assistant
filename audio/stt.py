@@ -128,13 +128,26 @@ def _ensure_local_model():
         _local_model_name = target
         print("[STT] 로컬 모델 로드 완료")
 
+        # GPU 워밍업: CUDA 커널을 미리 컴파일해 첫 실제 추론의 지연을 제거
+        if device == "cuda":
+            _warmup(_local_model)
+
+
+def _warmup(model) -> None:
+    """앱 시작 시 CUDA 커널을 미리 컴파일 — 첫 실제 추론의 지연(2-3초) 제거."""
+    try:
+        dummy = np.zeros(3200, dtype=np.float32)   # 0.2초 묵음
+        list(model.transcribe(dummy, language="ko", beam_size=1)[0])
+        print("[STT] GPU 워밍업 완료 (첫 추론 지연 제거됨)")
+    except Exception as e:
+        print(f"[STT] GPU 워밍업 실패 (무시): {e}")
+
 
 def _transcribe_local(audio: np.ndarray) -> str:
     _ensure_local_model()
     with _local_model_lock:
         model = _local_model
 
-    # initial_prompt: 한영 혼합 발화 인식률 향상
     prompt = config.WHISPER_INITIAL_PROMPT or None
 
     segments, _ = model.transcribe(
@@ -142,6 +155,7 @@ def _transcribe_local(audio: np.ndarray) -> str:
         language=config.WHISPER_LANG,
         beam_size=config.WHISPER_BEAM,
         initial_prompt=prompt,
+        condition_on_previous_text=False,   # 이전 세그먼트 컨텍스트 불필요 → 속도↑
         vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 300},
     )
