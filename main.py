@@ -119,8 +119,8 @@ def main():
     print("  Voice Typer — 음성 딕테이션 도구")
     print("=" * 50)
     print(f"  단축키: Ctrl+Space  |  종료: 오버레이 × 버튼")
-    print(f"  STT: Google Cloud STT ({config.GOOGLE_STT_MODEL})")
-    print(f"  Fallback: 로컬 Whisper ({config.TIER2_MODEL})")
+    print(f"  기본 STT  : Google Cloud STT  (model: {config.GOOGLE_STT_MODEL})")
+    print(f"  Fallback  : 로컬 Whisper      (model: {config.WHISPER_MODEL})")
     print("=" * 50)
 
     recorder = Recorder(on_level=lambda lvl: overlay.update_level(lvl) if overlay else None)

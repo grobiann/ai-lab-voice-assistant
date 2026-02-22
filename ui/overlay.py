@@ -27,7 +27,7 @@ def _mode_display_name(mode=None):
     m = mode if mode is not None else config.STT_MODE
     if m == "cloud_google":
         return "Google STT"
-    return f"로컬 Whisper ({config.TIER2_MODEL})"
+    return f"로컬 Whisper ({config.WHISPER_MODEL})"
 
 
 class Overlay:

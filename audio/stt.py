@@ -59,7 +59,7 @@ def transcribe(audio: np.ndarray, status_cb=None, mode_cb=None) -> str:
             print(f"[STT] Google STT 실패: {google_err}")
             print("[STT] fallback → 로컬 Whisper")
             if status_cb: status_cb("로컬 STT로 전환 중...")
-            if mode_cb:   mode_cb(f"로컬 Whisper ({config.TIER2_MODEL}) ↩")
+            if mode_cb:   mode_cb(f"로컬 Whisper ({config.WHISPER_MODEL}) ↩")
             _ensure_local_model()
             text = _transcribe_local(audio)
 
@@ -77,7 +77,7 @@ def transcribe(audio: np.ndarray, status_cb=None, mode_cb=None) -> str:
 
 def _ensure_local_model():
     global _local_model, _local_model_name
-    target    = config.TIER2_MODEL
+    target    = config.WHISPER_MODEL
     do_warmup = False
 
     with _local_model_lock:

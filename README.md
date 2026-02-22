@@ -39,7 +39,7 @@ GOOGLE_API_KEY=AIza...
 4. **API 및 서비스 → 사용자 인증 정보 → API 키 만들기**
 5. 생성된 키를 `.env` 파일에 붙여넣기
 
-> API 키 미설정 시 로컬 Whisper (`medium` 모델)로 자동 전환됩니다.
+> API 키 미설정 시 Fallback STT(로컬 Whisper)로 자동 전환됩니다. 모델은 `config.py`의 `WHISPER_MODEL`로 설정합니다.
 
 ---
 
@@ -57,11 +57,24 @@ GOOGLE_API_KEY=AIza...
 
 ## 설정 (`config.py`)
 
+**기본 STT — Google Cloud Speech-to-Text**
+
 | 항목 | 기본값 | 설명 |
 |------|--------|------|
+| `GOOGLE_API_KEY` | `""` | `.env` 에 설정. 미설정 시 Whisper fallback 자동 전환 |
 | `GOOGLE_STT_MODEL` | `"latest_short"` | `"latest_short"` (딕테이션) / `"latest_long"` (1분 이상) |
-| `TIER2_MODEL` | `"medium"` | fallback 로컬 Whisper 모델 크기 (`"small"` / `"medium"` / `"large-v3"`) |
+
+**Fallback STT — 로컬 Whisper (faster-whisper)**
+
+| 항목 | 기본값 | 설명 |
+|------|--------|------|
+| `WHISPER_MODEL` | `"medium"` | 모델 크기: `"small"` / `"medium"` / `"large-v3"` |
 | `WHISPER_DEVICE` | `"cuda"` | `"cuda"` / `"cpu"` — CUDA 없으면 자동 cpu 전환 |
+
+**출력 / UI**
+
+| 항목 | 기본값 | 설명 |
+|------|--------|------|
 | `OVERLAY_RESULT_MS` | `3000` | 인식 결과 표시 시간 (ms) |
 | `TYPER_TRAILING_SPACE` | `True` | 텍스트 끝에 공백 1개 추가 |
 
