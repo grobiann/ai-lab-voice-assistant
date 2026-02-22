@@ -291,7 +291,7 @@ def _transcribe_google(audio: np.ndarray) -> str:
         encoding=gcp_speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=config.SAMPLE_RATE,
         language_code="ko-KR",
-        model="latest_long",              # 최고 정확도 모델
+        model=getattr(config, "GOOGLE_STT_MODEL", "latest_short"),
         enable_automatic_punctuation=True,
     )
 

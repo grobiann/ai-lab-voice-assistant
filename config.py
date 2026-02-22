@@ -115,8 +115,13 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")   # cloud 모드용
 # ── Google Cloud Speech-to-Text (STT_MODE = "cloud_google") ──────────────────────
 # 발급: https://console.cloud.google.com → API 및 서비스 → Speech-to-Text API 활성화
 # API 키 방식(간단) 또는 서비스 계정 JSON(GOOGLE_APPLICATION_CREDENTIALS 환경변수) 가능
-# 설치: pip install google-cloud-speech
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+
+# Google STT 모델 선택:
+#   "latest_short" : 짧은 발화 최적화 (dictation 권장, 기본값)
+#   "latest_long"  : 긴 녹음 파일용 (1분 이상)
+#   "command_and_search" : 짧은 명령어·검색어
+GOOGLE_STT_MODEL = "latest_short"
 
 # ── Azure Cognitive Services Speech (STT_MODE = "cloud_azure") ───────────────────
 # 발급: https://portal.azure.com → Speech services 리소스 생성 → 키 및 엔드포인트
