@@ -23,7 +23,7 @@ End If
 ' 설치 완료 확인
 If Not fso.FileExists(pythonPath) Then
     MsgBox "설치에 실패했습니다." & vbCrLf & _
-           "문제가 지속되면 install.bat 를 직접 실행해 주세요.", _
+           "문제가 지속되면 run.bat 를 실행하거나 Python 설치 여부를 확인하세요.", _
            16, "Voice Typer 오류"
     WScript.Quit 1
 End If

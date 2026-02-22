@@ -10,7 +10,8 @@ Google Cloud Speech-to-Text를 사용한 한국어 음성 딕테이션 도구입
 ### Windows
 
 ```
-run.vbs  더블클릭 → 설치 + 실행 자동 처리
+run.vbs  더블클릭 → 설치 + 실행 자동 처리 (콘솔 창 없음, 권장)
+run.bat  더블클릭 → 설치 + 실행 (콘솔 창 표시, 오류 확인 시 사용)
 ```
 
 ### Linux / macOS
@@ -82,7 +83,7 @@ GOOGLE_API_KEY=AIza...
 
 ## 설치 상세
 
-`run.sh` / `run.vbs` 최초 실행 시 아래 과정을 자동으로 처리합니다.
+실행 파일(`run.sh` / `run.vbs` / `run.bat`) 최초 실행 시 아래 과정을 자동으로 처리합니다.
 
 ```
 1. Python 3.8+ 확인
@@ -109,8 +110,9 @@ ai-lab-voice-assistant/
 ├── config.py             # 전체 설정값
 ├── requirements.txt      # Python 의존성
 ├── .env.example          # API 키 설정 예시
-├── run.sh                # Linux/macOS 원 버튼 실행 (설치 포함)
-├── run.vbs               # Windows 원 버튼 실행 (설치 포함)
+├── run.sh                # Linux/macOS 실행 (설치 자동 포함)
+├── run.vbs               # Windows 실행 — 콘솔 창 없음 (권장)
+├── run.bat               # Windows 실행 — 콘솔 창 표시 (오류 확인용)
 │
 ├── core/
 │   └── state_machine.py  # 스레드 안전 상태 기계 (IDLE / RECORDING / PROCESSING)

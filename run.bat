@@ -1,17 +1,58 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 chcp 65001 > nul
 
 set "SCRIPT_DIR=%~dp0"
 
-:: ── 가상환경 미설치 시 자동 설치 ───────────────────────────────────────────────
+:: ── 최초 실행: 가상환경이 없으면 자동 설치 ───────────────────────────────────────
 if not exist "%SCRIPT_DIR%.venv\Scripts\python.exe" (
-    echo 처음 실행입니다. 설치를 진행합니다...
-    call "%SCRIPT_DIR%install.bat"
+    echo.
+    echo ==================================================
+    echo   Voice Typer  [First Run Setup]
+    echo ==================================================
+    echo.
+
+    :: Python 확인
+    python --version > nul 2>&1
     if ERRORLEVEL 1 (
-        echo 설치 실패. install.bat 를 직접 실행해 주세요.
+        echo [ERROR] Python not found.
+        echo.
+        echo   Install Python 3.10+ from:
+        echo   https://www.python.org/downloads/
+        echo   (Check "Add Python to PATH" during install)
+        echo.
         pause
         exit /b 1
+    )
+
+    :: 가상환경 생성
+    echo [1/2] Creating virtual environment...
+    python -m venv "%SCRIPT_DIR%.venv"
+    if ERRORLEVEL 1 (
+        echo [ERROR] Failed to create venv
+        pause & exit /b 1
+    )
+
+    :: 패키지 설치
+    echo [2/2] Installing packages... (may take 1-3 min on first run)
+    "%SCRIPT_DIR%.venv\Scripts\pip" install --upgrade pip --quiet
+    "%SCRIPT_DIR%.venv\Scripts\pip" install -r "%SCRIPT_DIR%requirements.txt"
+    if ERRORLEVEL 1 (
+        echo [ERROR] Package installation failed
+        pause & exit /b 1
+    )
+
+    echo.
+    echo ==================================================
+    echo   Setup complete! Starting app...
+    echo ==================================================
+    echo.
+)
+
+:: .env 없으면 example 에서 자동 복사
+if not exist "%SCRIPT_DIR%.env" (
+    if exist "%SCRIPT_DIR%.env.example" (
+        copy "%SCRIPT_DIR%.env.example" "%SCRIPT_DIR%.env" > nul
     )
 )
 
@@ -22,6 +63,5 @@ if not exist "%SCRIPT_DIR%.venv\Scripts\python.exe" (
 if ERRORLEVEL 1 (
     echo.
     echo 앱이 오류로 종료됐습니다.
-    echo 문제가 지속되면 install.bat 를 다시 실행해 주세요.
     pause
 )
