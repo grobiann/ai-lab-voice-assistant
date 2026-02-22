@@ -53,11 +53,13 @@ def load_model(on_ready=None):
         on_ready()
 
 
-def transcribe(audio: np.ndarray, status_cb=None) -> str:
+def transcribe(audio: np.ndarray, status_cb=None, mode_cb=None) -> str:
     """
     float32 numpy 배열(16kHz mono)을 텍스트로 변환합니다.
 
     status_cb: callable(str) — 처리 단계를 UI에 표시할 콜백 (선택)
+    mode_cb:   callable(str) — 실제 사용된 STT 모드 이름을 UI에 전달할 콜백 (선택)
+               cloud_google fallback 발생 시 로컬 Whisper로 변경됐음을 통지하는 데 사용
     반환값: 인식된 텍스트 (공백 포함), 실패 시 빈 문자열
     """
     if audio is None or len(audio) == 0:
@@ -102,12 +104,14 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
 
         elif mode == "cloud_google":
             if status_cb: status_cb("Google STT 인식 중...")
+            if mode_cb:   mode_cb("Google STT")
             try:
                 text = _transcribe_google(audio)
             except Exception as google_err:
                 print(f"[STT] Google STT 실패: {google_err}")
                 print("[STT] fallback → tier2 (로컬 Whisper)")
                 if status_cb: status_cb("로컬 STT로 전환 중...")
+                if mode_cb:   mode_cb(f"로컬 Whisper ({config.TIER2_MODEL}) ↩")
                 _ensure_local_model()
                 text = _transcribe_local(audio)
 

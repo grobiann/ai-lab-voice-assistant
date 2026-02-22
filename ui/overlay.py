@@ -19,6 +19,20 @@ C_BTN_STOP  = "#888888"
 C_BTN_FG    = "#ffffff"
 C_BORDER    = "#444444"
 C_CLOSE     = "#555555"
+C_MODE      = "#666666"   # STT 모드 레이블 색상
+
+
+def _mode_display_name(mode=None):
+    """STT 모드 문자열 → 오버레이에 표시할 짧은 이름."""
+    m = mode if mode is not None else config.STT_MODE
+    return {
+        "cloud_google": "Google STT",
+        "cloud_azure":  "Azure STT",
+        "cloud":        "OpenAI Whisper",
+        "tier1":        f"로컬 Whisper ({config.TIER1_MODEL})",
+        "tier2":        f"로컬 Whisper ({config.TIER2_MODEL})",
+        "tier3":        f"로컬 Whisper ({config.TIER3_MODEL}) + LLM",
+    }.get(m, m)
 
 
 class Overlay:
@@ -33,6 +47,7 @@ class Overlay:
         self._level        = 0
         self._blink_on     = False
         self._model_ready  = False   # 모델 로드 완료 여부 (스레드 안전 플래그)
+        self._mode_text    = _mode_display_name()   # 초기 STT 모드 표시
 
     # ── 공개 API (스레드 안전) ───────────────────────────────────────────────────
 
@@ -66,6 +81,12 @@ class Overlay:
         """처리 단계 텍스트 업데이트 — 아무 스레드에서 호출 가능 (PROCESSING 상태 중)."""
         if self._root:
             self._root.after(0, lambda: self._lbl_text.config(text=text, fg=C_PROC))
+
+    def set_mode_label(self, text: str):
+        """현재 STT 모드 레이블 업데이트 — 어느 스레드에서 호출해도 안전."""
+        self._mode_text = text
+        if self._root:
+            self._root.after(0, lambda: self._lbl_mode.config(text=text))
 
     def set_clipboard_sync(self, text: str, timeout: float = 1.0):
         """
@@ -163,6 +184,15 @@ class Overlay:
         )
         self._btn.pack(side=tk.RIGHT)
 
+        # ─ 모드 행: 현재 STT 엔진 표시 ─
+        self._lbl_mode = tk.Label(
+            inner, text=self._mode_text,
+            fg=C_MODE, bg=C_BG,
+            font=("Segoe UI", 8),
+            anchor="w",
+        )
+        self._lbl_mode.pack(fill=tk.X, pady=(3, 0))
+
         # ─ 하단 행: 텍스트 결과 ─
         self._lbl_text = tk.Label(
             inner, text="Ctrl+Space 또는 버튼을 눌러 시작",
@@ -170,7 +200,7 @@ class Overlay:
             font=("Segoe UI", 9),
             wraplength=W - 30, justify=tk.LEFT, anchor="w",
         )
-        self._lbl_text.pack(fill=tk.X, pady=(6, 0))
+        self._lbl_text.pack(fill=tk.X, pady=(3, 0))
 
     # ── 상태별 UI 업데이트 ────────────────────────────────────────────────────────
 

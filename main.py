@@ -60,7 +60,7 @@ def on_state_change(prev: State, new: State):
 
 def _transcribe_and_type(audio):
     """STT 추론 → 클립보드 저장(동기) → 커서 위치 입력 → IDLE 복귀."""
-    text = stt.transcribe(audio, status_cb=overlay.set_processing_text)
+    text = stt.transcribe(audio, status_cb=overlay.set_processing_text, mode_cb=overlay.set_mode_label)
 
     if text:
         # 1. 클립보드에 저장 — 완료될 때까지 대기 (동기)
