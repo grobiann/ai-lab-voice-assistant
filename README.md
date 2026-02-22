@@ -102,34 +102,6 @@ sudo apt install xdotool
 
 ---
 
-## 프로젝트 구조
-
-```
-ai-lab-voice-assistant/
-├── main.py               # 진입점 — 전체 컴포넌트 조합 및 단축키 리스너
-├── config.py             # 전체 설정값
-├── requirements.txt      # Python 의존성
-├── .env.example          # API 키 설정 예시
-├── run.sh                # Linux/macOS 실행 (설치 자동 포함)
-├── run.vbs               # Windows 실행 — 콘솔 창 없음 (권장)
-├── run.bat               # Windows 실행 — 콘솔 창 표시 (오류 확인용)
-│
-├── core/
-│   └── state_machine.py  # 스레드 안전 상태 기계 (IDLE / RECORDING / PROCESSING)
-│
-├── audio/
-│   ├── recorder.py       # sounddevice 마이크 녹음 + 실시간 RMS 레벨 콜백
-│   └── stt.py            # Google Cloud STT + 로컬 Whisper fallback
-│
-├── output/
-│   └── typer.py          # 커서 위치에 텍스트 입력 (xdotool → Ctrl+V / pynput)
-│
-└── ui/
-    └── overlay.py        # tkinter 항상-위 플로팅 오버레이
-```
-
----
-
 ## 의존성
 
 | 패키지 | 용도 |
