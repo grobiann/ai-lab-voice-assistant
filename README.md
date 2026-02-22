@@ -48,16 +48,16 @@ run.vbs  더블클릭 → 설치 + 실행 자동 처리
 `config.py`의 `STT_MODE` 한 줄만 바꾸면 됩니다.
 
 ```python
-STT_MODE = "tier2"   # 기본값
+STT_MODE = "cloud_google"   # 기본값 (API 키 없으면 tier2로 자동 전환)
 ```
 
 | 모드 | 속도 | 정확도 | 비용 | 필요 조건 |
 |------|------|--------|------|----------|
 | `tier1` | ★★★★★ | ★★★☆☆ | 무료 | GPU 권장 |
-| **`tier2`** (기본) | ★★★★☆ | ★★★★★ | 무료 | GPU 권장 |
+| `tier2` (fallback) | ★★★★☆ | ★★★★★ | 무료 | GPU 권장 |
 | `tier3` | ★★★☆☆ | ★★★★★+교정 | LLM_BACKEND에 따라 | GPU + LLM |
 | `cloud` | ★★★★☆ | ★★★★☆ | $0.006/분 | OpenAI API 키 |
-| `cloud_google` | ★★★★★ | ★★★★★ | 60분/월 무료 → $0.016/분 | Google API 키 |
+| **`cloud_google`** (기본) | ★★★★★ | ★★★★★ | 60분/월 무료 → $0.016/분 | Google API 키 |
 | `cloud_azure` | ★★★★★ | ★★★★★ | 5시간/월 무료 → $1/시간 | Azure Speech 키 |
 
 ---
@@ -334,7 +334,7 @@ AZURE_SPEECH_REGION=koreacentral
 
 | 항목 | 기본값 | 설명 |
 |------|--------|------|
-| `STT_MODE` | `"tier2"` | `"tier1"` / `"tier2"` / `"tier3"` / `"cloud"` / `"cloud_google"` / `"cloud_azure"` |
+| `STT_MODE` | `"cloud_google"` | `"tier1"` / `"tier2"` / `"tier3"` / `"cloud"` / `"cloud_google"` / `"cloud_azure"` |
 
 **로컬 Whisper (tier1 / tier2 / tier3)**
 

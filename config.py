@@ -17,7 +17,7 @@ except ImportError:
 #             사용 시나리오: 저사양 GPU / CPU 환경, 실시간에 가까운 응답이 필요할 때
 #             VRAM: ~2GB, 추론 시간: ~0.5-1초 (GPU)
 #
-#   "tier2" : 2단계 — 속도와 정확도의 균형  ← 기본값, 이 모드로 개발·테스트
+#   "tier2" : 2단계 — 속도와 정확도의 균형  ← cloud_google 불가 시 자동 fallback
 #             faster-whisper (large-v3 모델) 로컬 실행
 #             속도: ★★★★☆  정확도: ★★★★★  비용: 무료
 #             사용 시나리오: 일반적인 사용, API 키 없이 최고 수준의 로컬 정확도
@@ -33,10 +33,11 @@ except ImportError:
 #             whisper-1 모델 기반  비용: $0.006/분  OPENAI_API_KEY 필요
 #             속도: ★★★★☆  정확도: ★★★★☆
 #
-#   "cloud_google" : Google Cloud Speech-to-Text ← Android·Chrome 딕테이션과 동일 엔진
+#   "cloud_google" : Google Cloud Speech-to-Text ← Android·Chrome 딕테이션과 동일 엔진 ← 기본값
 #                    속도: ★★★★★  정확도: ★★★★★  비용: 60분/월 무료 → $0.016/분
 #                    GOOGLE_API_KEY 필요 (발급: https://console.cloud.google.com)
 #                    설치: pip install google-cloud-speech
+#                    ※ API 키 미설정 또는 오류 시 tier2(로컬)로 자동 전환
 #
 #   "cloud_azure"  : Azure Cognitive Services Speech ← Microsoft 음성인식 엔진
 #                    속도: ★★★★★  정확도: ★★★★★  비용: 5시간/월 무료 → $1/시간
@@ -44,7 +45,7 @@ except ImportError:
 #                    발급: https://portal.azure.com → 'Speech services' 생성
 #                    (별도 SDK 불필요 — requests 만으로 동작)
 #
-STT_MODE = "tier2"
+STT_MODE = "cloud_google"
 
 # ── 단계별 Whisper 모델 ──────────────────────────────────────────────────────────
 # 속도 vs 정확도 트레이드오프 (mid-range GPU 기준 추론 시간):

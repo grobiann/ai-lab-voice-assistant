@@ -34,10 +34,19 @@ _POLISH_PROMPT = """\
 def load_model(on_ready=None):
     """
     앱 시작 시 호출 — tier1/2/3는 로컬 Whisper 모델을 미리 로드합니다.
+    cloud_google 모드이지만 API 키가 없으면 tier2 로컬 모델을 미리 로드합니다.
     on_ready: 로드 완료 후 호출할 콜백 (선택, 어떤 스레드에서도 안전)
     """
+    import os
     if config.STT_MODE in ("tier1", "tier2", "tier3"):
         _ensure_local_model()
+    elif config.STT_MODE == "cloud_google":
+        has_key = bool(config.GOOGLE_API_KEY or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
+        if has_key:
+            print("[STT] 모드: cloud_google — Google API 키 확인됨 (tier2 fallback 대기)")
+        else:
+            print("[STT] GOOGLE_API_KEY 없음 — tier2 (로컬 Whisper) 로 자동 전환")
+            _ensure_local_model()
     else:
         print(f"[STT] 모드: {config.STT_MODE} — 로컬 Whisper 불필요")
     if on_ready:
@@ -93,7 +102,14 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
 
         elif mode == "cloud_google":
             if status_cb: status_cb("Google STT 인식 중...")
-            text = _transcribe_google(audio)
+            try:
+                text = _transcribe_google(audio)
+            except Exception as google_err:
+                print(f"[STT] Google STT 실패: {google_err}")
+                print("[STT] fallback → tier2 (로컬 Whisper)")
+                if status_cb: status_cb("로컬 STT로 전환 중...")
+                _ensure_local_model()
+                text = _transcribe_local(audio)
 
         elif mode == "cloud_azure":
             if status_cb: status_cb("Azure STT 인식 중...")
