@@ -4,6 +4,13 @@ faster-whisper>=1.0.0
 # ── STT 클라우드 (STT_MODE = "cloud") ──────────────────────────────────────────
 openai>=1.0.0
 
+# ── STT 클라우드 Google (STT_MODE = "cloud_google") — 선택 설치 ──────────────────
+# pip install google-cloud-speech
+# google-cloud-speech>=2.21.0
+
+# ── STT 클라우드 Azure (STT_MODE = "cloud_azure") — 추가 패키지 불필요 ───────────
+# Python 내장 urllib 사용 — 별도 설치 없음
+
 # ── LLM 교정 (STT_MODE = "tier3") ──────────────────────────────────────────────
 anthropic>=0.25.0
 

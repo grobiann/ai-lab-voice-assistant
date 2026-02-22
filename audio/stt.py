@@ -55,7 +55,7 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
         return ""
 
     mode  = config.STT_MODE
-    model = _tier_model_name() if mode != "cloud" else "cloud"
+    model = _tier_model_name() if mode in ("tier1", "tier2", "tier3") else mode
     dur   = len(audio) / config.SAMPLE_RATE
     rms   = float(np.sqrt(np.mean(audio ** 2))) if len(audio) > 0 else 0.0
 
@@ -91,8 +91,17 @@ def transcribe(audio: np.ndarray, status_cb=None) -> str:
             if status_cb: status_cb("클라우드 인식 중...")
             text = _transcribe_openai(audio)
 
+        elif mode == "cloud_google":
+            if status_cb: status_cb("Google STT 인식 중...")
+            text = _transcribe_google(audio)
+
+        elif mode == "cloud_azure":
+            if status_cb: status_cb("Azure STT 인식 중...")
+            text = _transcribe_azure(audio)
+
         else:
-            print(f"[STT] 알 수 없는 STT_MODE: '{mode}'  (tier1/tier2/tier3/cloud)")
+            print(f"[STT] 알 수 없는 STT_MODE: '{mode}'")
+            print( "      사용 가능: tier1 / tier2 / tier3 / cloud / cloud_google / cloud_azure")
             return ""
 
     except Exception as e:
@@ -234,6 +243,136 @@ def _transcribe_openai(audio: np.ndarray) -> str:
         language=config.WHISPER_LANG,
     )
     return result.text.strip()
+
+
+# ── Google Cloud Speech-to-Text 백엔드 ─────────────────────────────────────────
+
+def _transcribe_google(audio: np.ndarray) -> str:
+    """
+    Google Cloud Speech-to-Text API.
+
+    인증 방법 (둘 중 하나):
+      1. GOOGLE_API_KEY 환경변수 / .env 설정 (간단)
+      2. GOOGLE_APPLICATION_CREDENTIALS 환경변수에 서비스 계정 JSON 경로 설정
+
+    설치: pip install google-cloud-speech
+    """
+    try:
+        from google.cloud import speech as gcp_speech
+    except ImportError:
+        raise ImportError(
+            "google-cloud-speech 가 설치되지 않았습니다.\n"
+            "실행: pip install google-cloud-speech"
+        )
+
+    api_key = config.GOOGLE_API_KEY
+    if api_key:
+        # API 키 방식 — 서비스 계정 없이 간단히 사용 가능
+        client = gcp_speech.SpeechClient(
+            client_options={"api_key": api_key}
+        )
+    else:
+        import os
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            raise ValueError(
+                "GOOGLE_API_KEY 또는 GOOGLE_APPLICATION_CREDENTIALS 가 필요합니다.\n"
+                "  .env 에 GOOGLE_API_KEY=... 를 입력하거나\n"
+                "  GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json 설정"
+            )
+        client = gcp_speech.SpeechClient()
+
+    # numpy float32 → PCM 16-bit bytes
+    audio_bytes = (
+        audio.clip(-1.0, 1.0) * 32767
+    ).astype(np.int16).tobytes()
+
+    gcp_audio  = gcp_speech.RecognitionAudio(content=audio_bytes)
+    gcp_config = gcp_speech.RecognitionConfig(
+        encoding=gcp_speech.RecognitionConfig.AudioEncoding.LINEAR16,
+        sample_rate_hertz=config.SAMPLE_RATE,
+        language_code="ko-KR",
+        model="latest_long",              # 최고 정확도 모델
+        enable_automatic_punctuation=True,
+    )
+
+    response = client.recognize(config=gcp_config, audio=gcp_audio)
+    return " ".join(
+        result.alternatives[0].transcript
+        for result in response.results
+        if result.alternatives
+    ).strip()
+
+
+# ── Azure Cognitive Services Speech 백엔드 ──────────────────────────────────────
+
+def _transcribe_azure(audio: np.ndarray) -> str:
+    """
+    Azure Cognitive Services Speech REST API.
+    별도 SDK 불필요 — Python 내장 urllib 만으로 동작합니다.
+
+    설정:
+      AZURE_SPEECH_KEY    : Azure Speech 리소스 키
+      AZURE_SPEECH_REGION : 리소스 지역 (예: koreacentral, eastus)
+    발급: https://portal.azure.com → Speech services 리소스 생성
+    """
+    import io
+    import json
+    import urllib.request
+    import urllib.error
+    import soundfile as sf
+
+    key    = config.AZURE_SPEECH_KEY
+    region = config.AZURE_SPEECH_REGION
+
+    if not key:
+        raise ValueError(
+            "AZURE_SPEECH_KEY 가 설정되지 않았습니다.\n"
+            ".env 에 AZURE_SPEECH_KEY=<키> 를 입력하세요.\n"
+            "발급: https://portal.azure.com → Speech services 리소스 생성"
+        )
+    if not region:
+        raise ValueError(
+            "AZURE_SPEECH_REGION 이 설정되지 않았습니다.\n"
+            ".env 에 AZURE_SPEECH_REGION=koreacentral 등을 입력하세요."
+        )
+
+    # numpy float32 → WAV bytes
+    buf = io.BytesIO()
+    sf.write(buf, audio.astype(np.float32), config.SAMPLE_RATE,
+             format="wav", subtype="PCM_16")
+    wav_bytes = buf.getvalue()
+
+    url = (
+        f"https://{region}.stt.speech.microsoft.com"
+        f"/speech/recognition/conversation/cognitiveservices/v1"
+        f"?language=ko-KR&format=simple&profanity=raw"
+    )
+
+    req = urllib.request.Request(
+        url,
+        data=wav_bytes,
+        headers={
+            "Ocp-Apim-Subscription-Key": key,
+            "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        raise RuntimeError(f"Azure HTTP {e.code}: {body}")
+
+    if data.get("RecognitionStatus") == "Success":
+        return data.get("DisplayText", "").strip()
+
+    # 발화 없음 또는 오류
+    status = data.get("RecognitionStatus", "Unknown")
+    if status not in ("NoMatch", "InitialSilenceTimeout"):
+        print(f"[STT] Azure 상태: {status}")
+    return ""
 
 
 # ── LLM 교정 라우터 ────────────────────────────────────────────────────────────

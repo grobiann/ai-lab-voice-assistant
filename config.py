@@ -29,10 +29,20 @@ except ImportError:
 #             사용 시나리오: 문서 작성, 이메일, 한영 혼합 발화, 전문 용어가 많은 경우
 #             VRAM: ~3GB, 추론 시간: ~3-8초 (Whisper + LLM)
 #
-#   "cloud" : 클라우드 대체 — 로컬 GPU 없는 환경용 (고급 옵션)
-#             OpenAI Whisper API (whisper-1 / large-v2 기반)
-#             속도: ★★★★☆  정확도: ★★★★☆  비용: $0.006/분
-#             OPENAI_API_KEY 필요
+#   "cloud" : OpenAI Whisper API — 로컬 GPU 없는 환경용
+#             whisper-1 모델 기반  비용: $0.006/분  OPENAI_API_KEY 필요
+#             속도: ★★★★☆  정확도: ★★★★☆
+#
+#   "cloud_google" : Google Cloud Speech-to-Text ← Android·Chrome 딕테이션과 동일 엔진
+#                    속도: ★★★★★  정확도: ★★★★★  비용: 60분/월 무료 → $0.016/분
+#                    GOOGLE_API_KEY 필요 (발급: https://console.cloud.google.com)
+#                    설치: pip install google-cloud-speech
+#
+#   "cloud_azure"  : Azure Cognitive Services Speech ← Microsoft 음성인식 엔진
+#                    속도: ★★★★★  정확도: ★★★★★  비용: 5시간/월 무료 → $1/시간
+#                    AZURE_SPEECH_KEY + AZURE_SPEECH_REGION 필요
+#                    발급: https://portal.azure.com → 'Speech services' 생성
+#                    (별도 SDK 불필요 — requests 만으로 동작)
 #
 STT_MODE = "tier2"
 
@@ -101,6 +111,19 @@ CLAUDE_LLM_MODEL  = "claude-haiku-4-5-20251001"
 
 # ── 기타 API 키 ─────────────────────────────────────────────────────────────────
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")   # cloud 모드용
+
+# ── Google Cloud Speech-to-Text (STT_MODE = "cloud_google") ──────────────────────
+# 발급: https://console.cloud.google.com → API 및 서비스 → Speech-to-Text API 활성화
+# API 키 방식(간단) 또는 서비스 계정 JSON(GOOGLE_APPLICATION_CREDENTIALS 환경변수) 가능
+# 설치: pip install google-cloud-speech
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+
+# ── Azure Cognitive Services Speech (STT_MODE = "cloud_azure") ───────────────────
+# 발급: https://portal.azure.com → Speech services 리소스 생성 → 키 및 엔드포인트
+# 지역 예시: koreacentral, eastus, japaneast, southeastasia
+# (별도 SDK 불필요 — Python 내장 urllib 만으로 동작)
+AZURE_SPEECH_KEY    = os.environ.get("AZURE_SPEECH_KEY", "")
+AZURE_SPEECH_REGION = os.environ.get("AZURE_SPEECH_REGION", "koreacentral")
 
 # ── 오디오 ─────────────────────────────────────────────────────────────────────
 SAMPLE_RATE  = 16000   # Whisper 권장 샘플레이트
