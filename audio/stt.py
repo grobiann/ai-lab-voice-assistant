@@ -1,4 +1,4 @@
-# audio/stt.py — STT 백엔드 (tier1 / tier2 / tier3 / cloud)
+# audio/stt.py — STT 백엔드 (tier1 / tier2 / tier3 / cloud / cloud_google / cloud_azure)
 
 import time
 import threading
@@ -218,6 +218,14 @@ def _transcribe_local(audio: np.ndarray) -> str:
 # ── cloud 백엔드 (OpenAI Whisper API) ──────────────────────────────────────────
 
 def _transcribe_openai(audio: np.ndarray) -> str:
+    """
+    OpenAI Whisper API (cloud 모드).
+    로컬 GPU 없는 환경에서 사용. whisper-1 모델 기반.
+
+    설정: OPENAI_API_KEY (.env 또는 환경변수)
+    비용: $0.006/분
+    설치: pip install openai soundfile
+    """
     import io
     import soundfile as sf
 

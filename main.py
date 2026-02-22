@@ -119,10 +119,12 @@ def main():
     print("  Voice Typer — 음성 딕테이션 도구")
     print("=" * 50)
     _TIER_LABELS = {
-        "tier1": f"1단계 — 빠른 응답 (faster-whisper {config.TIER1_MODEL})",
-        "tier2": f"2단계 — 균형 (faster-whisper {config.TIER2_MODEL})",
-        "tier3": f"3단계 — 최고 정밀도 ({config.TIER3_MODEL} + {config.LLM_BACKEND} 교정)",
-        "cloud": "클라우드 (OpenAI Whisper API)",
+        "tier1":        f"1단계 — 빠른 응답 (faster-whisper {config.TIER1_MODEL})",
+        "tier2":        f"2단계 — 균형 (faster-whisper {config.TIER2_MODEL})",
+        "tier3":        f"3단계 — 최고 정밀도 ({config.TIER3_MODEL} + {config.LLM_BACKEND} 교정)",
+        "cloud":        "클라우드 (OpenAI Whisper API)",
+        "cloud_google": f"Google Cloud STT ({config.GOOGLE_STT_MODEL})",
+        "cloud_azure":  f"Azure Cognitive Services (region: {config.AZURE_SPEECH_REGION})",
     }
     _TIER_MODELS = {
         "tier1": config.TIER1_MODEL,
