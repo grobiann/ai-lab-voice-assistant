@@ -2,134 +2,39 @@
 
 import os
 
-# .env 파일 자동 로드 — install.sh / run.bat 에서 별도 처리 없이 API 키 적용됨
+# .env 파일 자동 로드
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass  # python-dotenv 미설치 시 환경변수 직접 설정 또는 아래 키값 직접 입력
 
-# ── STT 정확도 단계 선택 ─────────────────────────────────────────────────────────
-#
-#   "tier1" : 1단계 — 빠른 응답 우선
-#             faster-whisper (small 모델) 로컬 실행
-#             속도: ★★★★★  정확도: ★★★☆☆  비용: 무료
-#             사용 시나리오: 저사양 GPU / CPU 환경, 실시간에 가까운 응답이 필요할 때
-#             VRAM: ~2GB, 추론 시간: ~0.5-1초 (GPU)
-#
-#   "tier2" : 2단계 — 속도와 정확도의 균형  ← cloud_google 불가 시 자동 fallback
-#             faster-whisper (large-v3 모델) 로컬 실행
-#             속도: ★★★★☆  정확도: ★★★★★  비용: 무료
-#             사용 시나리오: 일반적인 사용, API 키 없이 최고 수준의 로컬 정확도
-#             VRAM: ~3GB (float16 양자화), 추론 시간: ~1-3초 (GPU)
-#
-#   "tier3" : 3단계 — 최고 정밀도 (맞춤법·외래어·문장 부호 자동 교정)
-#             faster-whisper (large-v3) + LLM 교정 (LLM_BACKEND 선택)
-#             속도: ★★★☆☆  정확도: ★★★★★+교정  비용: LLM_BACKEND에 따라 무료~유료
-#             사용 시나리오: 문서 작성, 이메일, 한영 혼합 발화, 전문 용어가 많은 경우
-#             VRAM: ~3GB, 추론 시간: ~3-8초 (Whisper + LLM)
-#
-#   "cloud" : OpenAI Whisper API — 로컬 GPU 없는 환경용
-#             whisper-1 모델 기반  비용: $0.006/분  OPENAI_API_KEY 필요
-#             속도: ★★★★☆  정확도: ★★★★☆
-#
-#   "cloud_google" : Google Cloud Speech-to-Text ← Android·Chrome 딕테이션과 동일 엔진 ← 기본값
-#                    속도: ★★★★★  정확도: ★★★★★  비용: 60분/월 무료 → $0.016/분
-#                    GOOGLE_API_KEY 필요 (발급: https://console.cloud.google.com)
-#                    설치: pip install google-cloud-speech
-#                    ※ API 키 미설정 또는 오류 시 tier2(로컬)로 자동 전환
-#
-#   "cloud_azure"  : Azure Cognitive Services Speech ← Microsoft 음성인식 엔진
-#                    속도: ★★★★★  정확도: ★★★★★  비용: 5시간/월 무료 → $1/시간
-#                    AZURE_SPEECH_KEY + AZURE_SPEECH_REGION 필요
-#                    발급: https://portal.azure.com → 'Speech services' 생성
-#                    (별도 SDK 불필요 — requests 만으로 동작)
-#
+# ── STT ──────────────────────────────────────────────────────────────────────────
+# Google Cloud Speech-to-Text를 기본으로 사용합니다.
+# API 키 미설정 또는 오류 시 로컬 Whisper (TIER2_MODEL)로 자동 전환됩니다.
 STT_MODE = "cloud_google"
 
-# ── 단계별 Whisper 모델 ──────────────────────────────────────────────────────────
-# 속도 vs 정확도 트레이드오프 (mid-range GPU 기준 추론 시간):
-#   tiny   ~0.3초  ★★☆☆☆ 정확도
-#   base   ~0.5초  ★★★☆☆ 정확도
-#   small  ~0.8초  ★★★★☆ 정확도
-#   medium ~1.5초  ★★★★★ 정확도  ← tier2 기본 (2-3초 목표)
-#   large-v3 ~4초  ★★★★★ 정확도 (medium과 한국어 일상 발화 차이 미미)
-TIER1_MODEL = "small"      # 빠름, VRAM ~1GB
-TIER2_MODEL = "medium"     # 균형, VRAM ~1.5GB  (large-v3 대비 ~3배 빠름)
-TIER3_MODEL = "medium"     # tier3는 LLM 교정이 핵심 — Whisper를 medium으로 속도 확보
+# ── 로컬 Whisper fallback 모델 ────────────────────────────────────────────────────
+# Google STT 실패 시 자동으로 사용되는 로컬 모델입니다.
+# 선택 가이드 (mid-range GPU 기준):
+#   "small"    ~0.8초  VRAM ~1GB
+#   "medium"   ~1.5초  VRAM ~1.5GB  ← 기본값 (정확도 우수)
+#   "large-v3" ~4초    VRAM ~3GB    (전문 용어·사투리에 유리)
+TIER2_MODEL = "medium"
 
 # ── 공통 Whisper 설정 ────────────────────────────────────────────────────────────
-WHISPER_LANG    = "ko"         # 언어 고정 (자동 감지보다 빠름)
-WHISPER_DEVICE  = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fallback
-WHISPER_COMPUTE = "float16"    # GPU: "float16" | CPU: "int8"
-WHISPER_BEAM    = 1            # 1=greedy(최속) / 2=균형 / 5=최정확
-#                              # beam 1→2 로 높이면 정확도↑ 대신 속도 ~1.5배 느려짐
+WHISPER_LANG        = "ko"         # 언어 고정 (자동 감지보다 빠름)
+WHISPER_DEVICE      = "cuda"       # "cuda" | "cpu" — CUDA 없으면 자동 cpu fallback
+WHISPER_COMPUTE     = "float16"    # GPU: "float16" | CPU: "int8"
+WHISPER_BEAM        = 1            # 1=greedy(최속) / 2=균형 / 5=최정확
+WHISPER_TEMPERATURE = [0, 0.2]     # greedy 실패 구간 자동 재시도
+WHISPER_INITIAL_PROMPT = ""        # 기본값 ""(비활성) — 단어 나열 형식만 안전
 
-# ── Whisper 온도 — 불확실 구간 자동 재시도 ────────────────────────────────────────
-#
-# [0, 0.2]   : greedy(0)로 먼저 시도 → 신뢰도 낮은 구간은 0.2 로 재시도 (기본 권장)
-#              단어 목록 없이 한영 혼합·전문용어 인식률을 높이는 범용적 방법입니다.
-# 0          : greedy 전용 (최속, 재시도 없음)
-# [0, 0.2, 0.4] : 재시도 단계 추가 (더 느리지만 불명확한 발화에 유리)
-WHISPER_TEMPERATURE = [0, 0.2]
-
-# ── Whisper 초기 프롬프트 (고급·선택 설정) ──────────────────────────────────────
-# 기본값 ""(비활성) — WHISPER_TEMPERATURE 방식이 더 범용적입니다.
-# ✅ 안전한 형식: 단어 나열  예) "API, GPT, YouTube"  → 환각 없음
-# ⛔ 위험한 형식: 완전한 문장  → Whisper가 문장을 그대로 출력하는 환각 발생
-WHISPER_INITIAL_PROMPT = ""
-
-# ── LLM 교정 백엔드 (STT_MODE = "tier3") ────────────────────────────────────────
-#
-#   "ollama" : Ollama 로컬 LLM — 완전 무료, 인터넷 불필요 ← 기본값
-#              OLLAMA_MODEL 모델을 로컬에서 실행 (Ollama 설치 + 모델 pull 필요)
-#
-#   "groq"   : Groq API 무료 티어 — API 키 필요하지만 무료
-#              30 req/min, 14,400 req/day — 음성 교정 용도로 충분
-#              GROQ_API_KEY 필요 (발급: https://console.groq.com)
-#
-#   "claude" : Anthropic Claude API — 유료, 최고 한국어 품질
-#              ANTHROPIC_API_KEY 필요
-#
-LLM_BACKEND = "ollama"
-
-# ── Ollama 설정 ──────────────────────────────────────────────────────────────────
-# 모델 선택 가이드:
-#   exaone3.5:7.8b  — LG AI Research, 한국어 특화, 권장 (VRAM ~6GB)
-#   exaone3.5:2.4b  — 경량, 빠름 (VRAM ~3GB)
-#   qwen2.5:7b      — 알리바바, 한국어 양호, 빠름 (VRAM ~5GB)
-#   qwen2.5:3b      — 초경량 (VRAM ~2.5GB)
-OLLAMA_HOST  = "http://localhost:11434"
-OLLAMA_MODEL = "exaone3.5:7.8b"
-
-# ── Groq 설정 (LLM_BACKEND = "groq") ────────────────────────────────────────────
-GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
-GROQ_LLM_MODEL = "llama-3.1-8b-instant"   # 빠름, 한국어 지원
-
-# ── Claude 설정 (LLM_BACKEND = "claude") ────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_LLM_MODEL  = "claude-haiku-4-5-20251001"
-
-# ── 기타 API 키 ─────────────────────────────────────────────────────────────────
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")   # cloud 모드용
-
-# ── Google Cloud Speech-to-Text (STT_MODE = "cloud_google") ──────────────────────
-# 발급: https://console.cloud.google.com → API 및 서비스 → Speech-to-Text API 활성화
-# API 키 방식(간단) 또는 서비스 계정 JSON(GOOGLE_APPLICATION_CREDENTIALS 환경변수) 가능
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
-
-# Google STT 모델 선택:
-#   "latest_short" : 짧은 발화 최적화 (dictation 권장, 기본값)
-#   "latest_long"  : 긴 녹음 파일용 (1분 이상)
-#   "command_and_search" : 짧은 명령어·검색어
-GOOGLE_STT_MODEL = "latest_short"
-
-# ── Azure Cognitive Services Speech (STT_MODE = "cloud_azure") ───────────────────
-# 발급: https://portal.azure.com → Speech services 리소스 생성 → 키 및 엔드포인트
-# 지역 예시: koreacentral, eastus, japaneast, southeastasia
-# (별도 SDK 불필요 — Python 내장 urllib 만으로 동작)
-AZURE_SPEECH_KEY    = os.environ.get("AZURE_SPEECH_KEY", "")
-AZURE_SPEECH_REGION = os.environ.get("AZURE_SPEECH_REGION", "koreacentral")
+# ── Google Cloud Speech-to-Text ──────────────────────────────────────────────────
+# 발급: https://console.cloud.google.com → Speech-to-Text API 활성화 → API 키 생성
+# .env 파일에 GOOGLE_API_KEY=AIza... 입력
+GOOGLE_API_KEY   = os.environ.get("GOOGLE_API_KEY", "")
+GOOGLE_STT_MODEL = "latest_short"   # "latest_short" (딕테이션) | "latest_long" (1분 이상)
 
 # ── 오디오 ─────────────────────────────────────────────────────────────────────
 SAMPLE_RATE  = 16000   # Whisper 권장 샘플레이트

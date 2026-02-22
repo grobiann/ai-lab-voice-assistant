@@ -25,14 +25,9 @@ C_MODE      = "#666666"   # STT 모드 레이블 색상
 def _mode_display_name(mode=None):
     """STT 모드 문자열 → 오버레이에 표시할 짧은 이름."""
     m = mode if mode is not None else config.STT_MODE
-    return {
-        "cloud_google": "Google STT",
-        "cloud_azure":  "Azure STT",
-        "cloud":        "OpenAI Whisper",
-        "tier1":        f"로컬 Whisper ({config.TIER1_MODEL})",
-        "tier2":        f"로컬 Whisper ({config.TIER2_MODEL})",
-        "tier3":        f"로컬 Whisper ({config.TIER3_MODEL}) + LLM",
-    }.get(m, m)
+    if m == "cloud_google":
+        return "Google STT"
+    return f"로컬 Whisper ({config.TIER2_MODEL})"
 
 
 class Overlay:

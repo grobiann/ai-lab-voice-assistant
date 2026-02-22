@@ -9,7 +9,7 @@ echo ==================================================
 
 :: ── Python 확인 ────────────────────────────────────────────────────────────────
 echo.
-echo [1/4] Python 버전 확인 중...
+echo [1/3] Python 버전 확인 중...
 set PYTHON_CMD=
 
 for %%P in (python python3) do (
@@ -34,7 +34,7 @@ echo   [OK] Python !PYVER! 발견
 
 :: ── 가상환경 ────────────────────────────────────────────────────────────────────
 echo.
-echo [2/4] 가상환경 설정 중...
+echo [2/3] 가상환경 설정 중...
 if not exist ".venv\" (
     %PYTHON_CMD% -m venv .venv
     echo   [OK] 가상환경 생성됨
@@ -44,7 +44,7 @@ if not exist ".venv\" (
 
 :: ── 패키지 설치 ─────────────────────────────────────────────────────────────────
 echo.
-echo [3/4] 패키지 설치 중 (처음 실행 시 수 분이 걸릴 수 있습니다)...
+echo [3/3] 패키지 설치 중 (처음 실행 시 수 분이 걸릴 수 있습니다)...
 .venv\Scripts\pip install --upgrade pip --quiet
 .venv\Scripts\pip install -r requirements.txt
 if !ERRORLEVEL! NEQ 0 (
@@ -56,34 +56,12 @@ echo   [OK] 패키지 설치 완료
 
 :: ── .env 파일 ──────────────────────────────────────────────────────────────────
 echo.
-echo [4/4] 환경 파일 설정 중...
 if not exist ".env" (
     copy ".env.example" ".env" > nul
     echo   [OK] .env 파일 생성됨
-    echo   [!] tier3 / cloud 모드 사용 시 .env 파일에 API 키를 입력하세요
+    echo   [!] .env 파일에 GOOGLE_API_KEY 를 입력하세요
 ) else (
     echo   [OK] .env 파일 유지 (기존 설정 보존)
-)
-
-:: ── Ollama 확인 ────────────────────────────────────────────────────────────────
-echo.
-echo [Ollama] tier3 LLM 교정 (LLM_BACKEND=ollama) 사용 시 필요...
-where ollama > nul 2>&1
-if !ERRORLEVEL! EQU 0 (
-    echo   [OK] Ollama 설치됨
-    ollama list 2>nul | findstr "exaone3.5" > nul
-    if !ERRORLEVEL! EQU 0 (
-        echo   [OK] EXAONE 3.5 모델 준비됨
-    ) else (
-        echo   [!] EXAONE 3.5 모델 미설치. 필요 시:
-        echo       ollama pull exaone3.5:7.8b   ^(권장, 한국어 특화, ~5GB^)
-        echo       ollama pull exaone3.5:2.4b   ^(경량, ~2GB^)
-    )
-) else (
-    echo   [!] Ollama 미설치. tier3^(ollama^) 사용 시 필요:
-    echo       설치: https://ollama.com/download
-    echo       설치 후: ollama pull exaone3.5:7.8b
-    echo       tier3 없이 tier2 기본 사용 가능 ^(API 키 불필요^)
 )
 
 :: ── 완료 ───────────────────────────────────────────────────────────────────────
@@ -94,8 +72,7 @@ echo.
 echo   실행 (콘솔 없음): run.vbs 더블클릭  ^(권장^)
 echo   실행 (콘솔 표시): run.bat 더블클릭  ^(오류 확인용^)
 echo.
-echo   STT 단계 변경: config.py 의 STT_MODE 수정
-echo     tier1 (빠름) / tier2 (균형, 기본) / tier3 (최고정밀)
+echo   Google API 키 설정: .env 파일에 GOOGLE_API_KEY=AIza... 입력
 echo ==================================================
 echo.
 pause

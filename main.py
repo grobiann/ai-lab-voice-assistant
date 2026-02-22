@@ -118,24 +118,9 @@ def main():
     print("=" * 50)
     print("  Voice Typer — 음성 딕테이션 도구")
     print("=" * 50)
-    _TIER_LABELS = {
-        "tier1":        f"1단계 — 빠른 응답 (faster-whisper {config.TIER1_MODEL})",
-        "tier2":        f"2단계 — 균형 (faster-whisper {config.TIER2_MODEL})",
-        "tier3":        f"3단계 — 최고 정밀도 ({config.TIER3_MODEL} + {config.LLM_BACKEND} 교정)",
-        "cloud":        "클라우드 (OpenAI Whisper API)",
-        "cloud_google": f"Google Cloud STT ({config.GOOGLE_STT_MODEL})",
-        "cloud_azure":  f"Azure Cognitive Services (region: {config.AZURE_SPEECH_REGION})",
-    }
-    _TIER_MODELS = {
-        "tier1": config.TIER1_MODEL,
-        "tier2": config.TIER2_MODEL,
-        "tier3": config.TIER3_MODEL,
-    }
-    tier_label = _TIER_LABELS.get(config.STT_MODE, config.STT_MODE)
     print(f"  단축키: Ctrl+Space  |  종료: 오버레이 × 버튼")
-    print(f"  STT: {tier_label}")
-    if config.STT_MODE in _TIER_MODELS:
-        print(f"  모델: {_TIER_MODELS[config.STT_MODE]}  언어: {config.WHISPER_LANG}")
+    print(f"  STT: Google Cloud STT ({config.GOOGLE_STT_MODEL})")
+    print(f"  Fallback: 로컬 Whisper ({config.TIER2_MODEL})")
     print("=" * 50)
 
     recorder = Recorder(on_level=lambda lvl: overlay.update_level(lvl) if overlay else None)

@@ -1,21 +1,11 @@
-# ── STT 로컬 (STT_MODE = "tier1" | "tier2" | "tier3") ──────────────────────────
-faster-whisper>=1.0.0
-
-# ── STT 클라우드 (STT_MODE = "cloud") ──────────────────────────────────────────
-openai>=1.0.0
-
-# ── STT 클라우드 Google (STT_MODE = "cloud_google") ──────────────────────────────
+# ── Google Cloud STT (기본) ─────────────────────────────────────────────────────
 google-cloud-speech>=2.21.0
 
-# ── STT 클라우드 Azure (STT_MODE = "cloud_azure") — 추가 패키지 불필요 ───────────
-# Python 내장 urllib 사용 — 별도 설치 없음
-
-# ── LLM 교정 (STT_MODE = "tier3") ──────────────────────────────────────────────
-anthropic>=0.25.0
+# ── 로컬 Whisper fallback (Google STT 실패 시 자동 전환) ─────────────────────────
+faster-whisper>=1.0.0
 
 # ── 오디오 수집 ─────────────────────────────────────────────────────────────────
-sounddevice>=0.4.6       # 마이크 스트림
-soundfile>=0.12.1        # numpy → WAV 변환 (cloud 모드)
+sounddevice>=0.4.6
 numpy>=1.21.0
 
 # ── 단축키 감지 + 텍스트 입력 ──────────────────────────────────────────────────
