@@ -8,7 +8,7 @@ Google Cloud Speech-to-Text (fallback: 로컬 Whisper)를 사용한 한국어 �
 ## 프로젝트 구조
 
 ```
-ai-lab-voice-assistant/
+ai-lab-voice-typer/
 ├── main.py               # 진입점 — 전체 컴포넌트 조합 및 단축키 리스너
 ├── config.py             # 전체 설정값
 ├── requirements.txt      # Python 의존성
