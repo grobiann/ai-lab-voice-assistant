@@ -28,7 +28,8 @@ ai-lab-voice-typer/
 │   └── typer.py          # 커서 위치에 텍스트 입력 (xdotool → Ctrl+V / pynput)
 │
 └── ui/
-    └── overlay.py        # tkinter 항상-위 플로팅 오버레이
+    ├── overlay.py        # tkinter 항상-위 플로팅 오버레이 (Ctrl+Space 시 표시, 인식 후 자동 숨김)
+    └── tray.py           # 시스템 트레이 아이콘 (pystray + Pillow, 상태별 색상 변경)
 ```
 
 ## 아키텍처
@@ -51,7 +52,8 @@ IDLE → (Ctrl+Space) → RECORDING → (Ctrl+Space) → PROCESSING → IDLE
 | `audio/recorder.py` | 마이크 스트림 열기/닫기, 오디오 버퍼 수집 |
 | `audio/stt.py` | Google STT API 호출 → 실패/미설정 시 Whisper로 fallback |
 | `output/typer.py` | Linux: xdotool → 실패 시 Ctrl+V / Windows·Mac: pynput |
-| `ui/overlay.py` | tkinter 기반 항상-위 플로팅 창, 상태별 UI 업데이트 |
+| `ui/overlay.py` | tkinter 기반 항상-위 플로팅 창 — Ctrl+Space 시 표시, 인식 완료 후 자동 숨김 |
+| `ui/tray.py` | 시스템 트레이 아이콘 — 상태별 색상(초록/빨강/노랑), 우클릭 메뉴(시작·중지·종료) |
 
 ### STT 우선순위
 

@@ -36,8 +36,9 @@ class Overlay:
     다른 스레드에서 모든 공개 메서드를 안전하게 호출할 수 있습니다.
     """
 
-    def __init__(self, on_toggle: callable):
+    def __init__(self, on_toggle: callable, on_quit: callable = None):
         self._on_toggle    = on_toggle
+        self._on_quit      = on_quit
         self._root         = None
         self._level        = 0
         self._blink_on     = False
@@ -83,6 +84,22 @@ class Overlay:
         if self._root:
             self._root.after(0, lambda: self._lbl_mode.config(text=text))
 
+    def show(self):
+        """오버레이 창 표시 — 우하단 재배치 후 deiconify."""
+        if self._root:
+            self._root.after(0, self._do_show)
+
+    def hide(self):
+        """오버레이 창 숨기기."""
+        if self._root:
+            self._root.after(0, self._root.withdraw)
+
+    def _do_show(self):
+        self._root.update_idletasks()
+        self._position_bottom_right(self._root)
+        self._root.deiconify()
+        self._root.lift()
+
     def set_clipboard_sync(self, text: str, timeout: float = 1.0):
         """
         tkinter 클립보드에 저장하고 완료될 때까지 대기 (동기 호출).
@@ -123,11 +140,7 @@ class Overlay:
         self._position_bottom_right(root)
         self._make_draggable(root)
 
-        # 모델이 이미 로드됐으면(cloud 모드 등) 바로 IDLE, 아니면 로딩 표시
-        if self._model_ready:
-            root.after(100, lambda: self._apply_state(State.IDLE))
-        else:
-            root.after(100, self._show_loading)
+        root.withdraw()   # 시작 시 숨김 — 트레이 아이콘으로 백그라운드 실행
         root.mainloop()
 
     # ── UI 빌드 ──────────────────────────────────────────────────────────────────
@@ -246,6 +259,7 @@ class Overlay:
         self._lbl_text.config(
             text="Ctrl+Space 또는 버튼을 눌러 시작", fg=C_IDLE,
         )
+        self._root.withdraw()   # 결과 표시 후 자동 숨김
 
     # ── 레벨 미터 ────────────────────────────────────────────────────────────────
 
@@ -280,9 +294,12 @@ class Overlay:
     # ── 종료 ─────────────────────────────────────────────────────────────────────
 
     def _quit(self):
-        print("[Overlay] 앱 종료")
-        self._root.quit()
-        self._root.destroy()
+        print("[Overlay] × 버튼 → 앱 종료")
+        if self._on_quit:
+            self._on_quit()
+        else:
+            self._root.quit()
+            self._root.destroy()
 
     # ── 창 드래그 ────────────────────────────────────────────────────────────────
 
