@@ -17,6 +17,9 @@ except ImportError:
 GOOGLE_API_KEY   = os.environ.get("GOOGLE_API_KEY", "")
 GOOGLE_STT_MODEL = "latest_short"   # "latest_short" (딕테이션) | "latest_long" (1분 이상)
 
+# 초기 STT 모드 — GOOGLE_API_KEY 설정 여부에 따라 자동 결정
+STT_MODE = "cloud_google" if GOOGLE_API_KEY else "local_whisper"
+
 # ══════════════════════════════════════════════════════════════════════════════════
 # Fallback STT — 로컬 Whisper (faster-whisper)
 # Google STT API 키 미설정 또는 호출 실패 시 자동으로 전환됩니다.
